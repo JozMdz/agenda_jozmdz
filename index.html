@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#161C2A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tablero">
+<title>Tablero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#161C2A; --panel:#1F2637; --panel2:#283044; --line:#374057;
+  --tx:#ECEFF6; --dim:#96A0B8; --dim2:#6D778F;
+  --escuela:#6FB6E8; --trabajo:#E8A24A; --personal:#63D0A4;
+  --alert:#F0705F; --ok:#63D0A4;
+  --sans:'IBM Plex Sans',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:15px;
+  -webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:none;cursor:pointer;padding:0}
+:focus-visible{outline:2px solid var(--escuela);outline-offset:2px}
+.hide{display:none!important}
+.mono{font-family:var(--mono)}
+
+/* ---------- Login ---------- */
+#login{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:32px 24px}
+.lg-mark{font-family:var(--mono);font-size:11px;letter-spacing:.34em;text-transform:uppercase;color:var(--dim2);margin-bottom:10px}
+.lg-h{font-family:var(--mono);font-size:34px;font-weight:700;letter-spacing:.06em;margin:0 0 6px}
+.lg-s{color:var(--dim);margin:0 0 30px;line-height:1.5;font-size:14px}
+.lg-form{display:flex;flex-direction:column;gap:12px;max-width:380px}
+.lg-err{color:var(--alert);font-size:13px;min-height:18px;margin-top:4px}
+
+/* ---------- Campos ---------- */
+.fld{width:100%;padding:13px 14px;background:var(--panel);border:1.5px solid var(--line);
+  border-radius:10px;font-size:16px}
+.fld::placeholder{color:var(--dim2)}
+select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 21px,calc(100% - 13px) 21px;background-size:5px 5px;background-repeat:no-repeat}
+.lab{display:block;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim2);margin:16px 0 7px}
+.btn{padding:13px 18px;border-radius:10px;font-weight:600;font-size:15px;
+  background:var(--panel2);border:1.5px solid var(--line);text-align:center}
+.btn-p{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+.btn-p:disabled{opacity:.35}
+.btn-d{color:var(--alert);border-color:transparent;background:none;font-size:13px}
+
+/* ---------- Shell ---------- */
+#app{min-height:100dvh;padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.hd{padding:calc(16px + env(safe-area-inset-top)) 18px 14px;display:flex;
+  align-items:flex-start;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line)}
+.hd-t{font-family:var(--mono);font-size:20px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;margin:0}
+.hd-d{color:var(--dim);font-size:12.5px;margin:3px 0 0;text-transform:capitalize}
+.hd-r{display:flex;align-items:center;gap:12px;flex:none}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.dot.off{background:var(--alert)}
+.hd-out{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+
+.view{padding:0 0 24px}
+.sec{margin-top:22px;padding:0 18px}
+.sec-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px}
+.sec-t{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--dim);margin:0}
+.sec-t.alert{color:var(--alert)}
+.sec-a{font-size:12.5px;color:var(--escuela);font-weight:600}
+
+/* ---------- KPIs ---------- */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:0 18px;margin-top:18px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 11px}
+.kpi-n{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1}
+.kpi-l{font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.25}
+
+/* ---------- Carril de la semana (firma) ---------- */
+.rail{display:flex;gap:5px;padding:0 18px;margin-top:20px;align-items:flex-end}
+.rail-d{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.rail-stack{width:100%;height:52px;display:flex;flex-direction:column;justify-content:flex-end;
+  gap:2px;background:var(--panel);border-radius:5px;padding:3px;border:1px solid transparent}
+.rail-d.today .rail-stack{border-color:var(--dim2)}
+.rail-seg{width:100%;border-radius:2px;min-height:3px}
+.rail-l{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim2)}
+.rail-n{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--dim)}
+.rail-d.today .rail-l,.rail-d.today .rail-n{color:var(--tx)}
+
+/* ---------- Renglón de tarea ---------- */
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.row{display:flex;align-items:stretch;gap:0;background:var(--panel);border:1px solid var(--line);
+  border-radius:11px;overflow:hidden}
+.row-bar{width:3.5px;flex:none}
+.row-b{flex:1;text-align:left;padding:11px 8px 11px 11px;min-width:0;display:flex;flex-direction:column;gap:3px}
+.row-t{font-size:14.5px;font-weight:600;line-height:1.3;word-break:break-word}
+.row-m{font-size:11.5px;color:var(--dim);display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.row-m .sep{color:var(--dim2)}
+.row-n{font-size:11.5px;color:var(--dim2);line-height:1.35}
+.row.done .row-t{text-decoration:line-through;opacity:.45}
+.row.done .row-m{opacity:.6}
+.pill{font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;padding:2px 6px;border-radius:4px;background:var(--panel2)}
+.pill.late{background:rgba(240,112,95,.16);color:var(--alert)}
+.pill.hi{background:rgba(240,112,95,.16);color:var(--alert)}
+.chk{width:48px;flex:none;display:flex;align-items:center;justify-content:center}
+.chk-b{width:23px;height:23px;border-radius:6px;border:1.6px solid var(--line);background:var(--bg);
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+.time{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--dim)}
+.bar-mini{height:3px;border-radius:2px;background:var(--panel2);overflow:hidden;margin-top:7px}
+.bar-mini i{display:block;height:100%;border-radius:2px}
+
+/* ---------- Chips ---------- */
+.chips{display:flex;gap:7px;overflow-x:auto;padding:12px 18px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:6px 13px;border-radius:999px;border:1.5px solid var(--line);
+  font-size:12.5px;font-weight:600;color:var(--dim);white-space:nowrap}
+.chip.on{background:var(--tx);border-color:var(--tx);color:var(--bg)}
+.dchips{display:flex;gap:6px;flex-wrap:wrap}
+.dchip{flex:1;min-width:42px;padding:9px 2px;border-radius:8px;border:1.5px solid var(--line);
+  font-family:var(--mono);font-size:11px;font-weight:600;color:var(--dim);text-align:center}
+.dchip.on{background:var(--escuela);border-color:var(--escuela);color:var(--bg)}
+
+/* ---------- Agenda ---------- */
+.ag-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 18px}
+.ag-nav{display:flex;align-items:center;gap:10px}
+.ag-arrow{width:32px;height:32px;border-radius:8px;background:var(--panel);border:1px solid var(--line);
+  font-size:15px;display:flex;align-items:center;justify-content:center}
+.ag-when{font-family:var(--mono);font-size:12.5px;font-weight:600;text-transform:capitalize;min-width:96px;text-align:center}
+.ag-tog{display:flex;border:1.5px solid var(--line);border-radius:9px;overflow:hidden}
+.ag-tog button{padding:6px 12px;font-size:12px;font-weight:600;color:var(--dim)}
+.ag-tog button.on{background:var(--panel2);color:var(--tx)}
+.grid{position:relative;margin:0 18px;border-top:1px solid var(--line)}
+.grid-h{display:flex;position:sticky;top:0;background:var(--bg);z-index:3;border-bottom:1px solid var(--line)}
+.grid-h .gh-sp{width:38px;flex:none}
+.gh-d{flex:1;text-align:center;padding:7px 2px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--dim2);min-width:0}
+.gh-d.today{color:var(--tx)}
+.gh-d b{display:block;font-size:13px;font-weight:700;margin-top:1px}
+.grid-b{display:flex;position:relative}
+.hours{width:38px;flex:none}
+.hr{height:44px;border-bottom:1px solid var(--line);position:relative}
+.hr span{position:absolute;top:-7px;right:6px;font-family:var(--mono);font-size:9.5px;color:var(--dim2)}
+.cols{flex:1;display:flex;position:relative;min-width:0}
+.col{flex:1;position:relative;border-left:1px solid var(--line);min-width:0}
+.col.today{background:rgba(255,255,255,.025)}
+.slot{height:44px;border-bottom:1px solid var(--line)}
+.blk{position:absolute;left:2px;right:2px;border-radius:6px;padding:4px 6px;overflow:hidden;
+  border-left:3px solid;font-size:11px;line-height:1.25;text-align:left}
+.blk b{display:block;font-weight:600;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.blk i{font-style:normal;font-family:var(--mono);font-size:9.5px;opacity:.75}
+.blk.done{opacity:.45}
+.now{position:absolute;left:0;right:0;height:1.5px;background:var(--alert);z-index:2;pointer-events:none}
+.now::before{content:'';position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--alert)}
+
+/* ---------- Proyectos ---------- */
+.pcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px;
+  display:flex;flex-direction:column;gap:8px;text-align:left;width:100%}
+.pcard-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.pcard-t{font-size:15.5px;font-weight:600;line-height:1.25}
+.pcard-d{font-size:12.5px;color:var(--dim);line-height:1.4}
+.pcard-s{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--dim2)}
+
+/* ---------- Bitácora ---------- */
+.note{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 13px}
+.note-m{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--dim2);display:flex;justify-content:space-between;gap:8px;margin-bottom:5px}
+.note-x{font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+
+/* ---------- Repaso ---------- */
+.rp{display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)}
+.rp-k{width:74px;flex:none;font-size:13px;font-weight:600}
+.rp-bar{flex:1;height:8px;border-radius:4px;background:var(--panel2);overflow:hidden}
+.rp-bar i{display:block;height:100%;border-radius:4px}
+.rp-n{width:56px;flex:none;text-align:right;font-family:var(--mono);font-size:12px;color:var(--dim)}
+
+/* ---------- Vacío ---------- */
+.empty{text-align:center;padding:34px 24px;color:var(--dim2)}
+.empty b{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--dim);margin-bottom:7px}
+.empty span{font-size:13px;line-height:1.5}
+
+/* ---------- Nav inferior ---------- */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
+  background:rgba(22,28,42,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom)}
+.nav button{flex:1;padding:10px 2px 11px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:9.5px;font-weight:600;color:var(--dim2);letter-spacing:.03em}
+.nav button.on{color:var(--tx)}
+.nav .ic{font-size:17px;line-height:1}
+.nav .bdg{position:absolute;transform:translate(13px,-4px);background:var(--alert);color:#fff;
+  font-family:var(--mono);font-size:8.5px;font-weight:700;min-width:15px;height:15px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;padding:0 3px}
+
+/* ---------- FAB ---------- */
+.fab{position:fixed;right:18px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:29;
+  width:54px;height:54px;border-radius:50%;background:var(--tx);color:var(--bg);
+  font-size:27px;font-weight:400;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 6px 20px rgba(0,0,0,.4)}
+
+/* ---------- Modal ---------- */
+.ov{position:fixed;inset:0;z-index:50;background:rgba(10,14,22,.68);display:flex;
+  align-items:flex-end;justify-content:center}
+.sheet{background:var(--panel);width:100%;max-width:560px;max-height:93dvh;overflow-y:auto;
+  border-radius:20px 20px 0 0;padding:8px 18px calc(26px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--line);animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(22px)}to{transform:none}}
+.grip{width:36px;height:4px;border-radius:2px;background:var(--line);margin:7px auto 14px}
+.sheet-h{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;margin:0 0 4px}
+.sheet-s{font-size:12.5px;color:var(--dim);margin:0 0 8px}
+.seg{display:flex;gap:7px}
+.seg button{flex:1;padding:10px 3px;border-radius:9px;border:1.5px solid var(--line);
+  font-size:13px;font-weight:600;color:var(--dim)}
+.two{display:flex;gap:10px}.two>div{flex:1;min-width:0}
+.acts{display:flex;gap:10px;margin-top:22px}.acts .btn{flex:1}
+.cl-row{display:flex;align-items:center;gap:9px;padding:7px 0}
+.cl-row input[type=text]{flex:1;background:none;border:none;border-bottom:1px solid var(--line);padding:4px 0;font-size:14px}
+.cl-x{color:var(--dim2);font-size:16px;padding:0 4px}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+@media(min-width:760px){
+  #app{max-width:820px;margin:0 auto;padding-bottom:24px}
+  .nav{position:sticky;bottom:0;max-width:820px;margin:0 auto;border-radius:14px 14px 0 0}
+  .fab{right:calc(50% - 410px + 18px)}
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="login" class="hide">
+  <div class="lg-mark">Sistema personal</div>
+  <h1 class="lg-h">TABLERO</h1>
+  <p class="lg-s">Escuela, trabajo y lo personal en un solo lugar.<br>Entra con tu correo para sincronizar tus dispositivos.</p>
+  <div class="lg-form">
+    <input id="lg-mail" class="fld" type="email" inputmode="email" autocomplete="username" placeholder="Correo">
+    <input id="lg-pass" class="fld" type="password" autocomplete="current-password" placeholder="Contraseña">
+    <button id="lg-go" class="btn btn-p">Entrar</button>
+    <div id="lg-err" class="lg-err"></div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app" class="hide">
+  <header class="hd">
+    <div>
+      <h1 class="hd-t" id="hd-t">Hoy</h1>
+      <p class="hd-d" id="hd-d"></p>
+    </div>
+    <div class="hd-r">
+      <span class="dot" id="dot" title="Conectado"></span>
+      <button class="hd-out" id="btn-out">Salir</button>
+    </div>
+  </header>
+
+  <main id="view" class="view"></main>
+
+  <button class="fab" id="fab">+</button>
+
+  <nav class="nav">
+    <button data-tab="hoy" class="on"><span class="ic">◎</span>Hoy</button>
+    <button data-tab="agenda"><span class="ic">▤</span>Agenda</button>
+    <button data-tab="tareas"><span class="ic">☰</span>Tareas</button>
+    <button data-tab="proyectos"><span class="ic">◈</span>Proyectos</button>
+    <button data-tab="repaso"><span class="ic">◔</span>Repaso</button>
+  </nav>
+</div>
+
+<div id="modal"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* =========================================================
+   CONFIGURACIÓN — pega tu anon key de Supabase aquí abajo
+   ========================================================= */
+const SUPABASE_URL      = "https://vovniymxjkqvfqqblyeu.supabase.co";
+const SUPABASE_ANON_KEY = "PEGA_AQUI_TU_ANON_KEY";
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ===================== Constantes ===================== */
+const AREAS = {
+  escuela:  { l:"Escuela",  v:"var(--escuela)" },
+  trabajo:  { l:"Trabajo",  v:"var(--trabajo)" },
+  personal: { l:"Personal", v:"var(--personal)" }
+};
+const DIAS = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
+const H0 = 6, H1 = 23, PX = 44;
+
+const S = {
+  user:null, proyectos:[], tareas:[], notas:[],
+  tab:"hoy", filtro:"todas", agModo:"dia", agFecha:null, proy:null, verHechas:false
+};
+
+/* ===================== Fechas (hora local) ===================== */
+const p2 = n => String(n).padStart(2,"0");
+const iso = d => `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+const hoyISO = () => iso(new Date());
+const dISO = k => { const [a,b,c] = k.split("-").map(Number); return new Date(a,b-1,c); };
+const addD = (k,n) => { const d = dISO(k); d.setDate(d.getDate()+n); return iso(d); };
+const lunes = k => { const d = dISO(k); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return iso(d); };
+const hm2m = t => { if(!t) return null; const [h,m] = t.split(":").map(Number); return h*60+m; };
+const m2hm = m => `${p2(Math.floor(m/60))}:${p2(m%60)}`;
+const corto = t => t ? t.slice(0,5) : "";
+const nomDia = k => {
+  const t = hoyISO();
+  if (k===t) return "Hoy";
+  if (k===addD(t,1)) return "Mañana";
+  if (k===addD(t,-1)) return "Ayer";
+  return dISO(k).toLocaleDateString("es-MX",{weekday:"short",day:"numeric",month:"short"}).replace(/\./g,"");
+};
+const largo = d => d.toLocaleDateString("es-MX",{weekday:"long",day:"numeric",month:"long"});
+const esc = s => String(s??"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ===================== Sesión ===================== */
+const $ = id => document.getElementById(id);
+
+async function entrar(){
+  const err = $("lg-err"); err.textContent = "";
+  const email = $("lg-mail").value.trim(), password = $("lg-pass").value;
+  if(!email || !password){ err.textContent = "Escribe tu correo y contraseña."; return; }
+  $("lg-go").disabled = true; $("lg-go").textContent = "Entrando…";
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  $("lg-go").disabled = false; $("lg-go").textContent = "Entrar";
+  if(error) err.textContent = "No se pudo entrar. Revisa el correo y la contraseña.";
+}
+
+async function arranque(){
+  const { data } = await sb.auth.getSession();
+  if(data.session){ S.user = data.session.user; await abrir(); }
+  else { $("login").classList.remove("hide"); }
+}
+
+async function abrir(){
+  $("login").classList.add("hide");
+  $("app").classList.remove("hide");
+  S.agFecha = hoyISO();
+  await cargar();
+  suscribir();
+  render();
+  setInterval(() => { if(S.tab==="agenda") render(); }, 60000);
+}
+
+/* ===================== Datos ===================== */
+async function cargar(){
+  try{
+    const [pr,ta,no] = await Promise.all([
+      sb.from("ag_proyectos").select("*").order("creado_en"),
+      sb.from("ag_tareas").select("*").order("creado_en"),
+      sb.from("ag_notas").select("*").order("creado_en",{ascending:false})
+    ]);
+    if(pr.error||ta.error||no.error) throw (pr.error||ta.error||no.error);
+    S.proyectos = pr.data || []; S.tareas = ta.data || []; S.notas = no.data || [];
+    $("dot").classList.remove("off"); $("dot").title = "Conectado";
+  }catch(e){
+    $("dot").classList.add("off"); $("dot").title = "Sin conexión con la base";
+    console.error(e);
+  }
+}
+
+function suscribir(){
+  ["ag_tareas","ag_proyectos","ag_notas"].forEach(t =>
+    sb.channel("ch_"+t)
+      .on("postgres_changes",{event:"*",schema:"public",table:t}, async () => { await cargar(); render(); })
+      .subscribe()
+  );
+}
+
+async function guardar(tabla, fila){
+  const q = fila.id
+    ? sb.from(tabla).update(fila).eq("id", fila.id)
+    : sb.from(tabla).insert(Array.isArray(fila) ? fila : [fila]);
+  const { error } = await q;
+  if(error){ alert("No se guardó: " + error.message); return false; }
+  await cargar(); render(); return true;
+}
+async function borrar(tabla, id){
+  const { error } = await sb.from(tabla).delete().eq("id", id);
+  if(error){ alert("No se eliminó: " + error.message); return; }
+  await cargar(); render();
+}
+
+/* ===================== Selectores ===================== */
+const abiertas  = () => S.tareas.filter(t => !t.hecha);
+const vencidas  = () => abiertas().filter(t => t.fecha && t.fecha < hoyISO());
+const deHoy     = () => abiertas().filter(t => t.fecha === hoyISO());
+const porArea   = ls => S.filtro==="todas" ? ls : ls.filter(t => t.area===S.filtro);
+const ordena    = ls => [...ls].sort((a,b) =>
+  (a.fecha||"9999").localeCompare(b.fecha||"9999") ||
+  ((!!b.hora)-(!!a.hora)) || (a.hora||"").localeCompare(b.hora||"") ||
+  ((b.alta?1:0)-(a.alta?1:0)) || (a.creado_en||"").localeCompare(b.creado_en||"")
+);
+const proyDe = id => S.proyectos.find(p => p.id===id);
+
+/* ===================== Render ===================== */
+function render(){
+  $("hd-d").textContent = largo(new Date());
+  $("hd-t").textContent = {hoy:"Hoy",agenda:"Agenda",tareas:"Tareas",proyectos:"Proyectos",repaso:"Repaso"}[S.tab];
+  document.querySelectorAll(".nav button").forEach(b => b.classList.toggle("on", b.dataset.tab===S.tab));
+  const v = $("view");
+  v.innerHTML = ({hoy:vHoy,agenda:vAgenda,tareas:vTareas,proyectos:vProyectos,repaso:vRepaso})[S.tab]();
+  v.scrollIntoView({block:"start"});
+  enlazar();
+}
+
+/* ---------- HOY ---------- */
+function vHoy(){
+  const hoy = deHoy(), late = vencidas();
+  const conHora = hoy.filter(t=>t.hora).length;
+  const cerradasHoy = S.tareas.filter(t => t.hecha && (t.hecha_en||"").slice(0,10)===hoyISO()).length;
+
+  let h = `<div class="kpis">
+    <div class="kpi"><div class="kpi-n">${hoy.length}</div><div class="kpi-l">pendientes hoy</div></div>
+    <div class="kpi"><div class="kpi-n" style="color:${late.length?"var(--alert)":"inherit"}">${late.length}</div><div class="kpi-l">arrastradas</div></div>
+    <div class="kpi"><div class="kpi-n" style="color:var(--ok)">${cerradasHoy}</div><div class="kpi-l">cerradas hoy</div></div>
+  </div>`;
+
+  /* carril de la semana */
+  const l = lunes(hoyISO());
+  const max = Math.max(1, ...Array.from({length:7},(_,i)=> abiertas().filter(t=>t.fecha===addD(l,i)).length));
+  h += `<div class="rail">` + Array.from({length:7},(_,i)=>{
+    const k = addD(l,i), ts = abiertas().filter(t=>t.fecha===k);
+    const segs = Object.keys(AREAS).map(a=>{
+      const n = ts.filter(t=>t.area===a).length;
+      return n ? `<span class="rail-seg" style="background:${AREAS[a].v};flex:${n}"></span>` : "";
+    }).join("");
+    const alto = ts.length ? Math.max(20, Math.round(ts.length/max*100)) : 0;
+    return `<button class="rail-d ${k===hoyISO()?"today":""}" data-goto="${k}">
+      <span class="rail-n">${ts.length||"·"}</span>
+      <span class="rail-stack"><span style="display:flex;flex-direction:column;gap:2px;height:${alto}%;justify-content:flex-end">${segs}</span></span>
+      <span class="rail-l">${DIAS[i]}</span></button>`;
+  }).join("") + `</div>`;
+
+  if(late.length){
+    h += `<div class="sec"><div class="sec-h"><h2 class="sec-t alert">Arrastradas</h2></div>
+      <ul class="list">${ordena(late).map(fila).join("")}</ul></div>`;
+  }
+  h += `<div class="sec"><div class="sec-h"><h2 class="sec-t">Hoy · ${conHora} con horario</h2></div>` +
+    (hoy.length ? `<ul class="list">${ordena(hoy).map(fila).join("")}</ul>`
+      : `<div class="empty"><b>Día limpio</b><span>No tienes nada agendado para hoy. Toca + para abrir una tarea.</span></div>`) + `</div>`;
+
+  const prox = ordena(abiertas().filter(t=>t.fecha && t.fecha>hoyISO() && t.fecha<=addD(hoyISO(),7))).slice(0,6);
+  if(prox.length) h += `<div class="sec"><div class="sec-h"><h2 class="sec-t">Los próximos 7 días</h2></div>
+    <ul class="list">${prox.map(t=>fila(t,true)).join("")}</ul></div>`;
+  return h;
+}
+
+/* ---------- Renglón ---------- */
+function fila(t, verFecha){
+  const a = AREAS[t.area] || AREAS.personal;
+  const late = !t.hecha && t.fecha && t.fecha < hoyISO();
+  const pr = proyDe(t.proyecto_id);
+  const cl = Array.isArray(t.checklist) ? t.checklist : [];
+  const hechos = cl.filter(c=>c.h).length;
+  const meta = [
+    t.hora ? `<span class="time">${corto(t.hora)}</span>` : "",
+    verFecha||late ? `<span>${nomDia(t.fecha)}</span>` : "",
+    pr ? `<span>${esc(pr.nombre)}</span>` : "",
+    cl.length ? `<span>${hechos}/${cl.length}</span>` : "",
+    late ? `<span class="pill late">vencida</span>` : "",
+    t.alta && !t.hecha ? `<span class="pill hi">alta</span>` : ""
+  ].filter(Boolean).join(`<span class="sep">·</span>`);
+
+  return `<li class="row ${t.hecha?"done":""}">
+    <span class="row-bar" style="background:${a.v}"></span>
+    <button class="row-b" data-abrir="${t.id}">
+      <span class="row-t">${esc(t.titulo)}</span>
+      <span class="row-m"><span style="color:${a.v};font-weight:600">${a.l}</span>${meta?`<span class="sep">·</span>${meta}`:""}</span>
+      ${t.nota?`<span class="row-n">${esc(t.nota)}</span>`:""}
+      ${cl.length?`<span class="bar-mini"><i style="width:${Math.round(hechos/cl.length*100)}%;background:${a.v}"></i></span>`:""}
+    </button>
+    <button class="chk" data-check="${t.id}" aria-label="${t.hecha?"Reabrir":"Marcar como hecha"}">
+      <span class="chk-b" style="${t.hecha?`border-color:${a.v};color:${a.v}`:""}">${t.hecha?"✓":""}</span>
+    </button></li>`;
+}
+
+/* ---------- AGENDA ---------- */
+function vAgenda(){
+  const semana = S.agModo==="semana";
+  const base = semana ? lunes(S.agFecha) : S.agFecha;
+  const dias = semana ? Array.from({length:7},(_,i)=>addD(base,i)) : [S.agFecha];
+  const titulo = semana
+    ? `${dISO(base).toLocaleDateString("es-MX",{day:"numeric",month:"short"})} – ${dISO(addD(base,6)).toLocaleDateString("es-MX",{day:"numeric",month:"short"})}`
+    : nomDia(S.agFecha) + " " + dISO(S.agFecha).toLocaleDateString("es-MX",{day:"numeric",month:"short"});
+
+  let h = `<div class="ag-bar">
+    <div class="ag-nav">
+      <button class="ag-arrow" data-mov="-1">‹</button>
+      <span class="ag-when">${titulo}</span>
+      <button class="ag-arrow" data-mov="1">›</button>
+    </div>
+    <div class="ag-tog">
+      <button data-modo="dia" class="${semana?"":"on"}">Día</button>
+      <button data-modo="semana" class="${semana?"on":""}">Semana</button>
+    </div></div>
+    <div class="chips"><button class="chip ${S.agFecha===hoyISO()?"":""}" data-mov="0">Ir a hoy</button></div>`;
+
+  h += `<div class="grid"><div class="grid-h"><span class="gh-sp"></span>` +
+    dias.map(k=>`<span class="gh-d ${k===hoyISO()?"today":""}">${semana?DIAS[(dISO(k).getDay()+6)%7]:""}<b>${dISO(k).getDate()}</b></span>`).join("") +
+    `</div><div class="grid-b"><div class="hours">` +
+    Array.from({length:H1-H0},(_,i)=>`<div class="hr"><span>${p2(H0+i)}</span></div>`).join("") +
+    `</div><div class="cols">`;
+
+  const ahora = new Date();
+  dias.forEach(k=>{
+    const hoyEs = k===hoyISO();
+    h += `<div class="col ${hoyEs?"today":""}">` +
+      Array.from({length:H1-H0},(_,i)=>`<div class="slot" data-slot="${k}|${p2(H0+i)}:00"></div>`).join("");
+    porArea(S.tareas).filter(t=>t.fecha===k && t.hora).forEach(t=>{
+      const a = AREAS[t.area]||AREAS.personal;
+      const top = (hm2m(t.hora)-H0*60)/60*PX;
+      const alto = Math.max(20,(t.duracion||30)/60*PX-2);
+      if(top < -20) return;
+      h += `<button class="blk ${t.hecha?"done":""}" data-abrir="${t.id}"
+        style="top:${top}px;height:${alto}px;border-left-color:${a.v};background:color-mix(in srgb,${a.v} 20%,var(--panel))">
+        <b>${esc(t.titulo)}</b><i>${corto(t.hora)}</i></button>`;
+    });
+    if(hoyEs){
+      const y = (ahora.getHours()*60+ahora.getMinutes()-H0*60)/60*PX;
+      if(y>0 && y<(H1-H0)*PX) h += `<div class="now" style="top:${y}px"></div>`;
+    }
+    h += `</div>`;
+  });
+  return h + `</div></div></div>`;
+}
+
+/* ---------- TAREAS ---------- */
+function vTareas(){
+  const ls = S.verHechas
+    ? porArea(S.tareas.filter(t=>t.hecha)).sort((a,b)=>(b.hecha_en||"").localeCompare(a.hecha_en||""))
+    : ordena(porArea(abiertas()));
+
+  let h = `<div class="chips">` +
+    [["todas","Todas"],...Object.entries(AREAS).map(([k,a])=>[k,a.l])]
+      .map(([k,l])=>`<button class="chip ${S.filtro===k?"on":""}" data-filtro="${k}"
+        style="${S.filtro===k&&AREAS[k]?`background:${AREAS[k].v};border-color:${AREAS[k].v};color:var(--bg)`:AREAS[k]?`color:${AREAS[k].v};border-color:${AREAS[k].v}`:""}">${l}</button>`).join("") +
+    `<button class="chip ${S.verHechas?"on":""}" data-hechas="1">${S.verHechas?"Ver abiertas":"Ver hechas"}</button></div>`;
+
+  if(!ls.length) return h + `<div class="empty"><b>Sin tareas</b><span>${S.verHechas?"Aquí se archiva lo que vas cerrando.":"Toca + para abrir la primera."}</span></div>`;
+
+  if(S.verHechas) return h + `<div class="sec"><ul class="list">${ls.map(t=>fila(t,true)).join("")}</ul></div>`;
+
+  const grupos = {};
+  ls.forEach(t => { const k = !t.fecha ? "zz" : t.fecha < hoyISO() ? "00" : t.fecha; (grupos[k] ||= []).push(t); });
+  Object.keys(grupos).sort().forEach(k=>{
+    const lab = k==="00" ? "Arrastradas" : k==="zz" ? "Sin fecha" : nomDia(k);
+    h += `<div class="sec"><div class="sec-h"><h2 class="sec-t ${k==="00"?"alert":""}">${lab}<span style="opacity:.55"> ${grupos[k].length}</span></h2></div>
+      <ul class="list">${grupos[k].map(t=>fila(t)).join("")}</ul></div>`;
+  });
+  return h;
+}
+
+/* ---------- PROYECTOS ---------- */
+function vProyectos(){
+  if(S.proy) return vProyecto(S.proy);
+  const act = S.proyectos.filter(p=>!p.archivado);
+  if(!act.length) return `<div class="empty"><b>Sin proyectos</b><span>Un proyecto agrupa tareas y su bitácora: la tesis, una auditoría, un pendiente de casa. Toca + para crear uno.</span></div>`;
+  return `<div class="sec"><div class="list">` + act.map(p=>{
+    const a = AREAS[p.area]||AREAS.personal;
+    const ts = S.tareas.filter(t=>t.proyecto_id===p.id);
+    const hechas = ts.filter(t=>t.hecha).length;
+    const pct = ts.length ? Math.round(hechas/ts.length*100) : 0;
+    return `<button class="pcard" data-proy="${p.id}">
+      <div class="pcard-h"><span class="pcard-t">${esc(p.nombre)}</span>
+        <span class="pill" style="background:color-mix(in srgb,${a.v} 22%,var(--panel));color:${a.v}">${a.l}</span></div>
+      ${p.detalle?`<span class="pcard-d">${esc(p.detalle)}</span>`:""}
+      <span class="bar-mini"><i style="width:${pct}%;background:${a.v}"></i></span>
+      <span class="pcard-s"><span>${hechas}/${ts.length} tareas · ${pct}%</span>
+        <span>${p.vence?"vence "+nomDia(p.vence):""}</span></span></button>`;
+  }).join("") + `</div></div>`;
+}
+
+function vProyecto(id){
+  const p = proyDe(id); if(!p){ S.proy=null; return vProyectos(); }
+  const a = AREAS[p.area]||AREAS.personal;
+  const ts = ordena(S.tareas.filter(t=>t.proyecto_id===p.id && !t.hecha));
+  const hs = S.tareas.filter(t=>t.proyecto_id===p.id && t.hecha);
+  const ns = S.notas.filter(n=>n.proyecto_id===p.id);
+  return `<div class="sec"><button class="sec-a" data-volver="1">‹ Todos los proyectos</button>
+    <div style="margin-top:14px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+        <div><h2 style="margin:0;font-size:20px;line-height:1.25">${esc(p.nombre)}</h2>
+          <p style="margin:5px 0 0;color:var(--dim);font-size:13px">${a.l}${p.vence?" · vence "+nomDia(p.vence):""} · ${hs.length}/${ts.length+hs.length} cerradas</p></div>
+        <button class="sec-a" data-editproy="${p.id}">Editar</button>
+      </div>
+      ${p.detalle?`<p style="color:var(--dim);font-size:13.5px;line-height:1.5;margin:10px 0 0">${esc(p.detalle)}</p>`:""}
+    </div></div>
+    <div class="sec"><div class="sec-h"><h2 class="sec-t">Pendientes</h2>
+      <button class="sec-a" data-nuevatarea="${p.id}">+ Tarea</button></div>
+      ${ts.length?`<ul class="list">${ts.map(t=>fila(t,true)).join("")}</ul>`:`<div class="empty"><span>Sin pendientes abiertos.</span></div>`}</div>
+    <div class="sec"><div class="sec-h"><h2 class="sec-t">Bitácora</h2>
+      <button class="sec-a" data-nuevanota="${p.id}">+ Nota</button></div>
+      ${ns.length?`<div class="list">${ns.map(n=>`<div class="note">
+        <div class="note-m"><span>${new Date(n.creado_en).toLocaleString("es-MX",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</span>
+          <button data-delnota="${n.id}" style="color:var(--dim2)">Eliminar</button></div>
+        <div class="note-x">${esc(n.texto)}</div></div>`).join("")}</div>`
+        : `<div class="empty"><span>Anota avances, acuerdos o dónde te quedaste.</span></div>`}</div>`;
+}
+
+/* ---------- REPASO ---------- */
+function vRepaso(){
+  const l = lunes(hoyISO());
+  const sem = S.tareas.filter(t => (t.hecha ? (t.hecha_en||"").slice(0,10) : t.fecha) >= l);
+  let h = `<div class="sec"><div class="sec-h"><h2 class="sec-t">Esta semana por área</h2></div>`;
+  Object.entries(AREAS).forEach(([k,a])=>{
+    const ts = sem.filter(t=>t.area===k), hh = ts.filter(t=>t.hecha).length;
+    const pct = ts.length ? Math.round(hh/ts.length*100) : 0;
+    h += `<div class="rp"><span class="rp-k" style="color:${a.v}">${a.l}</span>
+      <span class="rp-bar"><i style="width:${pct}%;background:${a.v}"></i></span>
+      <span class="rp-n">${hh}/${ts.length}</span></div>`;
+  });
+  h += `</div>`;
+
+  /* racha */
+  let racha = 0;
+  for(let i=0;i<60;i++){
+    const k = addD(hoyISO(),-i);
+    const hay = S.tareas.some(t=>t.hecha && (t.hecha_en||"").slice(0,10)===k);
+    if(hay) racha++; else if(i>0) break;
+  }
+  const cerradas = S.tareas.filter(t=>t.hecha && (t.hecha_en||"") >= l).length;
+  h += `<div class="kpis" style="margin-top:22px">
+    <div class="kpi"><div class="kpi-n" style="color:var(--ok)">${cerradas}</div><div class="kpi-l">cerradas esta semana</div></div>
+    <div class="kpi"><div class="kpi-n">${racha}</div><div class="kpi-l">días de racha</div></div>
+    <div class="kpi"><div class="kpi-n" style="color:${vencidas().length?"var(--alert)":"inherit"}">${vencidas().length}</div><div class="kpi-l">arrastradas</div></div>
+  </div>`;
+
+  const late = ordena(vencidas());
+  h += `<div class="sec"><div class="sec-h"><h2 class="sec-t ${late.length?"alert":""}">Qué se está arrastrando</h2></div>` +
+    (late.length ? `<ul class="list">${late.map(t=>fila(t,true)).join("")}</ul>`
+      : `<div class="empty"><b>Al corriente</b><span>No traes nada vencido. Buen cierre de semana.</span></div>`) + `</div>`;
+  return h;
+}
+
+/* ===================== Eventos de la vista ===================== */
+function enlazar(){
+  const v = $("view");
+  v.querySelectorAll("[data-abrir]").forEach(b => b.onclick = () => formTarea(S.tareas.find(t=>t.id===b.dataset.abrir)));
+  v.querySelectorAll("[data-check]").forEach(b => b.onclick = () => alternar(b.dataset.check));
+  v.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => { S.agFecha=b.dataset.goto; S.agModo="dia"; S.tab="agenda"; render(); });
+  v.querySelectorAll("[data-filtro]").forEach(b => b.onclick = () => { S.filtro=b.dataset.filtro; render(); });
+  v.querySelectorAll("[data-hechas]").forEach(b => b.onclick = () => { S.verHechas=!S.verHechas; render(); });
+  v.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => { S.agModo=b.dataset.modo; render(); });
+  v.querySelectorAll("[data-mov]").forEach(b => b.onclick = () => {
+    const n = +b.dataset.mov;
+    S.agFecha = n===0 ? hoyISO() : addD(S.agFecha, n * (S.agModo==="semana"?7:1));
+    render();
+  });
+  v.querySelectorAll("[data-slot]").forEach(b => b.onclick = () => {
+    const [f,h] = b.dataset.slot.split("|");
+    formTarea({ fecha:f, hora:h });
+  });
+  v.querySelectorAll("[data-proy]").forEach(b => b.onclick = () => { S.proy=b.dataset.proy; render(); });
+  v.querySelectorAll("[data-volver]").forEach(b => b.onclick = () => { S.proy=null; render(); });
+  v.querySelectorAll("[data-editproy]").forEach(b => b.onclick = e => { e.stopPropagation(); formProyecto(proyDe(b.dataset.editproy)); });
+  v.querySelectorAll("[data-nuevatarea]").forEach(b => b.onclick = () => formTarea({ proyecto_id:b.dataset.nuevatarea, area:proyDe(b.dataset.nuevatarea)?.area }));
+  v.querySelectorAll("[data-nuevanota]").forEach(b => b.onclick = () => formNota(b.dataset.nuevanota));
+  v.querySelectorAll("[data-delnota]").forEach(b => b.onclick = () => { if(confirm("¿Eliminar esta nota?")) borrar("ag_notas", b.dataset.delnota); });
+}
+
+async function alternar(id){
+  const t = S.tareas.find(x=>x.id===id); if(!t) return;
+  await guardar("ag_tareas", { id, hecha:!t.hecha, hecha_en: t.hecha ? null : new Date().toISOString() });
+}
+
+/* ===================== Modal ===================== */
+function cerrar(){ $("modal").innerHTML = ""; }
+function hoja(html){
+  $("modal").innerHTML = `<div class="ov" id="ov"><div class="sheet" id="sh"><div class="grip"></div>${html}</div></div>`;
+  $("ov").onclick = e => { if(e.target.id==="ov") cerrar(); };
+}
+
+/* ---------- Formulario de tarea ---------- */
+function formTarea(t){
+  t = t || {};
+  const nuevo = !t.id;
+  const f = {
+    titulo:t.titulo||"", area:t.area||"trabajo", proyecto_id:t.proyecto_id||"",
+    fecha:t.fecha ?? hoyISO(), hora:corto(t.hora||""), duracion:t.duracion||60,
+    alta:!!t.alta, nota:t.nota||"", checklist: Array.isArray(t.checklist)?[...t.checklist]:[]
+  };
+  let dias = [], semanas = 4;
+
+  const pintar = () => {
+    hoja(`<h2 class="sheet-h">${nuevo?"Nueva tarea":"Tarea"}</h2>
+      ${!nuevo&&t.hecha?`<p class="sheet-s">Cerrada el ${new Date(t.hecha_en).toLocaleString("es-MX",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</p>`:""}
+      <label class="lab">Qué hay que hacer</label>
+      <input id="f-tit" class="fld" value="${esc(f.titulo)}" placeholder="Revisar capítulo 3">
+      <label class="lab">Área</label>
+      <div class="seg" id="f-area">${Object.entries(AREAS).map(([k,a])=>
+        `<button data-a="${k}" style="${f.area===k?`background:${a.v};color:var(--bg);border-color:transparent`:`color:${a.v};border-color:${a.v}`}">${a.l}</button>`).join("")}</div>
+      <label class="lab">Proyecto</label>
+      <select id="f-proy" class="fld"><option value="">Sin proyecto</option>${
+        S.proyectos.filter(p=>!p.archivado).map(p=>`<option value="${p.id}" ${f.proyecto_id===p.id?"selected":""}>${esc(p.nombre)}</option>`).join("")}</select>
+      <div class="two"><div><label class="lab">Fecha</label>
+        <input id="f-fec" type="date" class="fld" value="${f.fecha||""}"></div>
+        <div><label class="lab">Hora</label><input id="f-hor" type="time" class="fld" value="${f.hora}"></div></div>
+      <label class="lab">Duración</label>
+      <select id="f-dur" class="fld">${[15,30,45,60,90,120,180].map(m=>
+        `<option value="${m}" ${f.duracion===m?"selected":""}>${m<60?m+" min":(m/60)+" h"}</option>`).join("")}</select>
+      ${nuevo?`<label class="lab">Repetir en estos días</label>
+      <div class="dchips" id="f-dias">${DIAS.map((d,i)=>`<button data-d="${i}" class="dchip ${dias.includes(i)?"on":""}">${d}</button>`).join("")}</div>
+      <label class="lab">Durante cuántas semanas</label>
+      <select id="f-sem" class="fld">${[1,2,4,8,12,16].map(n=>`<option value="${n}" ${semanas===n?"selected":""}>${n} semana${n>1?"s":""}</option>`).join("")}</select>`:""}
+      <button id="f-alta" class="btn" style="margin-top:16px;display:flex;align-items:center;gap:9px;justify-content:flex-start;${f.alta?"border-color:var(--alert);color:var(--alert)":""}">
+        <span style="font-family:var(--mono)">${f.alta?"!":"○"}</span> Prioridad alta</button>
+      <label class="lab">Pasos</label><div id="f-cl">${f.checklist.map((c,i)=>
+        `<div class="cl-row"><button data-clt="${i}" class="chk-b" style="${c.h?"border-color:var(--ok);color:var(--ok)":""}">${c.h?"✓":""}</button>
+         <input type="text" data-cli="${i}" value="${esc(c.t)}" placeholder="Paso"><button data-clx="${i}" class="cl-x">×</button></div>`).join("")}
+        <button id="f-cladd" class="sec-a" style="margin-top:6px">+ Agregar paso</button></div>
+      <label class="lab">Nota</label>
+      <textarea id="f-not" class="fld" rows="2" placeholder="Opcional">${esc(f.nota)}</textarea>
+      <div class="acts"><button id="f-ok" class="btn btn-p">Guardar</button><button id="f-no" class="btn">Cancelar</button></div>
+      ${nuevo?"":`<button id="f-del" class="btn btn-d" style="width:100%;margin-top:10px">Eliminar tarea</button>`}`);
+
+    const leer = () => {
+      f.titulo=$("f-tit").value; f.proyecto_id=$("f-proy").value; f.fecha=$("f-fec").value||null;
+      f.hora=$("f-hor").value||null; f.duracion=+$("f-dur").value; f.nota=$("f-not").value;
+      document.querySelectorAll("[data-cli]").forEach(i=>{ f.checklist[+i.dataset.cli].t = i.value; });
+      if(nuevo) semanas = +$("f-sem").value;
+    };
+    document.querySelectorAll("#f-area button").forEach(b => b.onclick = () => { leer(); f.area=b.dataset.a; pintar(); });
+    document.querySelectorAll("#f-dias button").forEach(b => b.onclick = () => {
+      leer(); const i=+b.dataset.d; dias = dias.includes(i) ? dias.filter(x=>x!==i) : [...dias,i]; pintar(); });
+    $("f-alta").onclick = () => { leer(); f.alta=!f.alta; pintar(); };
+    $("f-cladd").onclick = () => { leer(); f.checklist.push({t:"",h:false}); pintar(); };
+    document.querySelectorAll("[data-clt]").forEach(b => b.onclick = () => { leer(); const c=f.checklist[+b.dataset.clt]; c.h=!c.h; pintar(); });
+    document.querySelectorAll("[data-clx]").forEach(b => b.onclick = () => { leer(); f.checklist.splice(+b.dataset.clx,1); pintar(); });
+    $("f-no").onclick = cerrar;
+    if($("f-del")) $("f-del").onclick = () => { if(confirm("¿Eliminar la tarea?")){ cerrar(); borrar("ag_tareas", t.id); } };
+
+    $("f-ok").onclick = async () => {
+      leer();
+      if(!f.titulo.trim()){ $("f-tit").focus(); return; }
+      f.checklist = f.checklist.filter(c=>c.t.trim());
+      const base = { titulo:f.titulo.trim(), area:f.area, proyecto_id:f.proyecto_id||null,
+        fecha:f.fecha, hora:f.hora, duracion:f.duracion, alta:f.alta,
+        nota:f.nota.trim()||null, checklist:f.checklist };
+      $("f-ok").disabled = true;
+
+      if(nuevo && dias.length && f.fecha){
+        const filas = [], l0 = lunes(f.fecha);
+        for(let s=0;s<semanas;s++) dias.forEach(d=>{
+          const k = addD(addD(l0,s*7), d);
+          if(k >= f.fecha) filas.push({ ...base, fecha:k });
+        });
+        await guardar("ag_tareas", filas.length?filas:[base]);
+      } else {
+        await guardar("ag_tareas", nuevo ? base : { id:t.id, ...base });
+      }
+      cerrar();
+    };
+  };
+  pintar();
+}
+
+/* ---------- Formulario de proyecto ---------- */
+function formProyecto(p){
+  p = p || {};
+  const nuevo = !p.id;
+  hoja(`<h2 class="sheet-h">${nuevo?"Nuevo proyecto":"Proyecto"}</h2>
+    <label class="lab">Nombre</label>
+    <input id="p-nom" class="fld" value="${esc(p.nombre||"")}" placeholder="Tesis · capítulo de resultados">
+    <label class="lab">Área</label>
+    <div class="seg" id="p-area">${Object.entries(AREAS).map(([k,a])=>{
+      const on = (p.area||"escuela")===k;
+      return `<button data-a="${k}" style="${on?`background:${a.v};color:var(--bg);border-color:transparent`:`color:${a.v};border-color:${a.v}`}">${a.l}</button>`;}).join("")}</div>
+    <label class="lab">De qué se trata</label>
+    <textarea id="p-det" class="fld" rows="2" placeholder="Opcional">${esc(p.detalle||"")}</textarea>
+    <label class="lab">Fecha objetivo</label>
+    <input id="p-ven" type="date" class="fld" value="${p.vence||""}">
+    <div class="acts"><button id="p-ok" class="btn btn-p">Guardar</button><button id="p-no" class="btn">Cancelar</button></div>
+    ${nuevo?"":`<button id="p-arch" class="btn" style="width:100%;margin-top:10px">${p.archivado?"Reactivar":"Archivar"}</button>
+      <button id="p-del" class="btn btn-d" style="width:100%;margin-top:8px">Eliminar proyecto</button>`}`);
+
+  let area = p.area || "escuela";
+  document.querySelectorAll("#p-area button").forEach(b => b.onclick = () => {
+    area = b.dataset.a;
+    document.querySelectorAll("#p-area button").forEach(x=>{
+      const a = AREAS[x.dataset.a], on = x.dataset.a===area;
+      x.style.cssText = on ? `background:${a.v};color:var(--bg);border-color:transparent` : `color:${a.v};border-color:${a.v}`;
+    });
+  });
+  $("p-no").onclick = cerrar;
+  if($("p-arch")) $("p-arch").onclick = async () => { cerrar(); S.proy=null; await guardar("ag_proyectos",{ id:p.id, archivado:!p.archivado }); };
+  if($("p-del")) $("p-del").onclick = async () => {
+    if(!confirm("Se elimina el proyecto y su bitácora. Las tareas se conservan sueltas. ¿Continuar?")) return;
+    cerrar(); S.proy=null; await borrar("ag_proyectos", p.id);
+  };
+  $("p-ok").onclick = async () => {
+    const nombre = $("p-nom").value.trim();
+    if(!nombre){ $("p-nom").focus(); return; }
+    const fila = { nombre, area, detalle:$("p-det").value.trim()||null, vence:$("p-ven").value||null };
+    $("p-ok").disabled = true;
+    await guardar("ag_proyectos", nuevo ? fila : { id:p.id, ...fila });
+    cerrar();
+  };
+}
+
+/* ---------- Nota de bitácora ---------- */
+function formNota(proyecto_id){
+  hoja(`<h2 class="sheet-h">Nota de bitácora</h2>
+    <p class="sheet-s">Queda con fecha y hora.</p>
+    <textarea id="n-tx" class="fld" rows="5" placeholder="Dónde me quedé, qué acordamos, qué sigue…"></textarea>
+    <div class="acts"><button id="n-ok" class="btn btn-p">Guardar nota</button><button id="n-no" class="btn">Cancelar</button></div>`);
+  $("n-tx").focus();
+  $("n-no").onclick = cerrar;
+  $("n-ok").onclick = async () => {
+    const texto = $("n-tx").value.trim(); if(!texto) return;
+    $("n-ok").disabled = true;
+    await guardar("ag_notas", { proyecto_id, texto });
+    cerrar();
+  };
+}
+
+/* ===================== Arranque ===================== */
+document.querySelectorAll(".nav button").forEach(b => b.onclick = () => {
+  S.tab = b.dataset.tab; if(S.tab!=="proyectos") S.proy = null; render();
+});
+$("fab").onclick = () => {
+  if(S.tab==="proyectos" && !S.proy) return formProyecto();
+  if(S.tab==="proyectos" && S.proy) return formTarea({ proyecto_id:S.proy, area:proyDe(S.proy)?.area });
+  if(S.tab==="agenda") return formTarea({ fecha:S.agFecha });
+  formTarea({ fecha:hoyISO() });
+};
+$("btn-out").onclick = async () => { if(confirm("¿Cerrar sesión?")){ await sb.auth.signOut(); location.reload(); } };
+$("lg-go").onclick = entrar;
+$("lg-pass").onkeydown = e => { if(e.key==="Enter") entrar(); };
+sb.auth.onAuthStateChange((ev, sesion) => {
+  if(ev==="SIGNED_IN" && !S.user){ S.user = sesion.user; abrir(); }
+});
+arranque();
+</script>
+</body>
+</html>
