@@ -3,22 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#161C2A">
+<meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tablero">
 <title>Tablero</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#161C2A; --panel:#1F2637; --panel2:#283044; --line:#374057;
-  --tx:#ECEFF6; --dim:#96A0B8; --dim2:#6D778F;
-  --escuela:#6FB6E8; --trabajo:#E8A24A; --personal:#63D0A4;
-  --alert:#F0705F; --ok:#63D0A4;
-  --sans:'IBM Plex Sans',system-ui,sans-serif;
-  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --bg:#000000; --panel:#1C1C1E; --panel2:#2C2C2E; --line:#38383A;
+  --tx:#FFFFFF; --dim:rgba(235,235,245,.62); --dim2:rgba(235,235,245,.34);
+  --escuela:#0A84FF; --trabajo:#FF9F0A; --personal:#30D158;
+  --alert:#FF453A; --ok:#30D158; --acento:#BF5AF2;
+  --sans:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,system-ui,sans-serif;
+  --mono:ui-monospace,'SF Mono',SFMono-Regular,'Roboto Mono',monospace;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;padding:0}
@@ -74,7 +71,7 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
 
 /* ---------- KPIs ---------- */
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:0 18px;margin-top:18px}
-.kpi{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 11px}
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 11px}
 .kpi-n{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1}
 .kpi-l{font-size:10.5px;color:var(--dim);margin-top:5px;line-height:1.25}
 
@@ -92,7 +89,7 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
 /* ---------- Renglón de tarea ---------- */
 .list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
 .row{display:flex;align-items:stretch;gap:0;background:var(--panel);border:1px solid var(--line);
-  border-radius:11px;overflow:hidden}
+  border-radius:14px;overflow:hidden}
 .row-bar{width:3.5px;flex:none}
 .row-b{flex:1;text-align:left;padding:11px 8px 11px 11px;min-width:0;display:flex;flex-direction:column;gap:3px}
 .row-t{font-size:14.5px;font-weight:600;line-height:1.3;word-break:break-word}
@@ -155,8 +152,24 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
 .now{position:absolute;left:0;right:0;height:1.5px;background:var(--alert);z-index:2;pointer-events:none}
 .now::before{content:'';position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--alert)}
 
+/* ---------- Mes ---------- */
+.mes{margin:2px 14px 0}
+.mes-h{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px}
+.mes-h span{text-align:center;font-size:11px;font-weight:600;color:var(--dim2);
+  text-transform:uppercase;letter-spacing:.05em}
+.mes-g{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.mes-d{aspect-ratio:1/1.08;border-radius:13px;background:var(--panel);position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.mes-d.out{opacity:.28}
+.mes-n{font-size:15.5px;font-weight:600;width:28px;height:28px;display:flex;
+  align-items:center;justify-content:center;border-radius:50%}
+.mes-d.today .mes-n{background:var(--alert);color:#fff;font-weight:700}
+.mes-d.sel{box-shadow:inset 0 0 0 2px var(--escuela)}
+.mes-dots{display:flex;gap:3.5px;height:6px}
+.mes-dots i{width:6px;height:6px;border-radius:50%}
+
 /* ---------- Proyectos ---------- */
-.pcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:14px;
+.pcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px;
   display:flex;flex-direction:column;gap:8px;text-align:left;width:100%}
 .pcard-h{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
 .pcard-t{font-size:15.5px;font-weight:600;line-height:1.25}
@@ -164,7 +177,7 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
 .pcard-s{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--dim2)}
 
 /* ---------- Bitácora ---------- */
-.note{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 13px}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 13px}
 .note-m{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
   color:var(--dim2);display:flex;justify-content:space-between;gap:8px;margin-bottom:5px}
 .note-x{font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
@@ -184,7 +197,7 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
 
 /* ---------- Nav inferior ---------- */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
-  background:rgba(22,28,42,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);
+  background:rgba(0,0,0,.86);backdrop-filter:blur(12px);border-top:1px solid var(--line);
   padding-bottom:env(safe-area-inset-bottom)}
 .nav button{flex:1;padding:10px 2px 11px;display:flex;flex-direction:column;align-items:center;gap:3px;
   font-size:9.5px;font-weight:600;color:var(--dim2);letter-spacing:.03em}
@@ -204,7 +217,7 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
 .ov{position:fixed;inset:0;z-index:50;background:rgba(10,14,22,.68);display:flex;
   align-items:flex-end;justify-content:center}
 .sheet{background:var(--panel);width:100%;max-width:560px;max-height:93dvh;overflow-y:auto;
-  border-radius:20px 20px 0 0;padding:8px 18px calc(26px + env(safe-area-inset-bottom));
+  border-radius:22px 22px 0 0;padding:8px 18px calc(26px + env(safe-area-inset-bottom));
   border-top:1px solid var(--line);animation:up .22s ease-out}
 @keyframes up{from{transform:translateY(22px)}to{transform:none}}
 .grip{width:36px;height:4px;border-radius:2px;background:var(--line);margin:7px auto 14px}
@@ -291,7 +304,7 @@ const H0 = 6, H1 = 23, PX = 44;
 
 const S = {
   user:null, proyectos:[], tareas:[], notas:[],
-  tab:"hoy", filtro:"todas", agModo:"dia", agFecha:null, proy:null, verHechas:false
+  tab:"hoy", filtro:"todas", agModo:"mes", agFecha:null, proy:null, verHechas:false
 };
 
 /* ===================== Fechas (hora local) ===================== */
@@ -477,26 +490,66 @@ function fila(t, verFecha){
 }
 
 /* ---------- AGENDA ---------- */
+function barraAg(titulo){
+  return `<div class="ag-bar">
+    <div class="ag-nav">
+      <button class="ag-arrow" data-mov="-1">&lsaquo;</button>
+      <span class="ag-when">${titulo}</span>
+      <button class="ag-arrow" data-mov="1">&rsaquo;</button>
+    </div>
+    <div class="ag-tog">${[["mes","Mes"],["semana","Semana"],["dia","Día"]].map(([k,l])=>
+      `<button data-modo="${k}" class="${S.agModo===k?"on":""}">${l}</button>`).join("")}</div>
+    </div>
+    <div class="chips"><button class="chip" data-mov="0">Ir a hoy</button>${
+      [["todas","Todas"],...Object.entries(AREAS).map(([k,a])=>[k,a.l])].map(([k,l])=>
+      `<button class="chip ${S.filtro===k?"on":""}" data-filtro="${k}" style="${
+        S.filtro===k&&AREAS[k]?`background:${AREAS[k].v};border-color:${AREAS[k].v};color:#fff`
+        :AREAS[k]?`color:${AREAS[k].v};border-color:${AREAS[k].v}`:""}">${l}</button>`).join("")}</div>`;
+}
+
 function vAgenda(){
+  return S.agModo==="mes" ? vMes() : vRejilla();
+}
+
+/* --- Mes --- */
+function vMes(){
+  const d = dISO(S.agFecha), y = d.getFullYear(), m = d.getMonth();
+  const primero = iso(new Date(y,m,1));
+  const off = (dISO(primero).getDay()+6)%7;
+  const dim = new Date(y,m+1,0).getDate();
+  const filas = Math.ceil((off+dim)/7);
+  const ini = lunes(primero);
+
+  let h = barraAg(d.toLocaleDateString("es-MX",{month:"long",year:"numeric"}));
+  h += `<div class="mes"><div class="mes-h">${DIAS.map(x=>`<span>${x}</span>`).join("")}</div><div class="mes-g">`;
+  for(let i=0;i<filas*7;i++){
+    const k = addD(ini,i), dd = dISO(k);
+    const ts = porArea(S.tareas).filter(t=>t.fecha===k && !t.hecha);
+    const dots = Object.keys(AREAS).filter(a=>ts.some(t=>t.area===a))
+      .map(a=>`<i style="background:${AREAS[a].v}"></i>`).join("");
+    h += `<button class="mes-d ${dd.getMonth()!==m?"out":""} ${k===hoyISO()?"today":""} ${k===S.agFecha?"sel":""}" data-dia="${k}">
+      <span class="mes-n">${dd.getDate()}</span><span class="mes-dots">${dots}</span></button>`;
+  }
+  h += `</div></div>`;
+
+  const sel = ordena(porArea(S.tareas).filter(t=>t.fecha===S.agFecha));
+  h += `<div class="sec"><div class="sec-h"><h2 class="sec-t">${nomDia(S.agFecha)}</h2>
+    <button class="sec-a" data-verdia="1">Ver por horas ›</button></div>` +
+    (sel.length ? `<ul class="list">${sel.map(t=>fila(t)).join("")}</ul>`
+      : `<div class="empty"><span>Nada este día. Toca + para agendar.</span></div>`) + `</div>`;
+  return h;
+}
+
+/* --- Semana y Día --- */
+function vRejilla(){
   const semana = S.agModo==="semana";
   const base = semana ? lunes(S.agFecha) : S.agFecha;
   const dias = semana ? Array.from({length:7},(_,i)=>addD(base,i)) : [S.agFecha];
   const titulo = semana
     ? `${dISO(base).toLocaleDateString("es-MX",{day:"numeric",month:"short"})} – ${dISO(addD(base,6)).toLocaleDateString("es-MX",{day:"numeric",month:"short"})}`
-    : nomDia(S.agFecha) + " " + dISO(S.agFecha).toLocaleDateString("es-MX",{day:"numeric",month:"short"});
+    : `${nomDia(S.agFecha)} ${dISO(S.agFecha).toLocaleDateString("es-MX",{day:"numeric",month:"short"})}`;
 
-  let h = `<div class="ag-bar">
-    <div class="ag-nav">
-      <button class="ag-arrow" data-mov="-1">‹</button>
-      <span class="ag-when">${titulo}</span>
-      <button class="ag-arrow" data-mov="1">›</button>
-    </div>
-    <div class="ag-tog">
-      <button data-modo="dia" class="${semana?"":"on"}">Día</button>
-      <button data-modo="semana" class="${semana?"on":""}">Semana</button>
-    </div></div>
-    <div class="chips"><button class="chip ${S.agFecha===hoyISO()?"":""}" data-mov="0">Ir a hoy</button></div>`;
-
+  let h = barraAg(titulo);
   h += `<div class="grid"><div class="grid-h"><span class="gh-sp"></span>` +
     dias.map(k=>`<span class="gh-d ${k===hoyISO()?"today":""}">${semana?DIAS[(dISO(k).getDay()+6)%7]:""}<b>${dISO(k).getDate()}</b></span>`).join("") +
     `</div><div class="grid-b"><div class="hours">` +
@@ -511,10 +564,10 @@ function vAgenda(){
     porArea(S.tareas).filter(t=>t.fecha===k && t.hora).forEach(t=>{
       const a = AREAS[t.area]||AREAS.personal;
       const top = (hm2m(t.hora)-H0*60)/60*PX;
-      const alto = Math.max(20,(t.duracion||30)/60*PX-2);
       if(top < -20) return;
+      const alto = Math.max(20,(t.duracion||30)/60*PX-2);
       h += `<button class="blk ${t.hecha?"done":""}" data-abrir="${t.id}"
-        style="top:${top}px;height:${alto}px;border-left-color:${a.v};background:color-mix(in srgb,${a.v} 20%,var(--panel))">
+        style="top:${top}px;height:${alto}px;border-left-color:${a.v};background:color-mix(in srgb,${a.v} 26%,var(--panel))">
         <b>${esc(t.titulo)}</b><i>${corto(t.hora)}</i></button>`;
     });
     if(hoyEs){
@@ -639,19 +692,23 @@ function enlazar(){
   const v = $("view");
   v.querySelectorAll("[data-abrir]").forEach(b => b.onclick = () => formTarea(S.tareas.find(t=>t.id===b.dataset.abrir)));
   v.querySelectorAll("[data-check]").forEach(b => b.onclick = () => alternar(b.dataset.check));
-  v.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => { S.agFecha=b.dataset.goto; S.agModo="dia"; S.tab="agenda"; render(); });
+  v.querySelectorAll("[data-goto]").forEach(b => b.onclick = () => { S.agFecha=b.dataset.goto; S.agModo="mes"; S.tab="agenda"; render(); });
   v.querySelectorAll("[data-filtro]").forEach(b => b.onclick = () => { S.filtro=b.dataset.filtro; render(); });
   v.querySelectorAll("[data-hechas]").forEach(b => b.onclick = () => { S.verHechas=!S.verHechas; render(); });
   v.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => { S.agModo=b.dataset.modo; render(); });
   v.querySelectorAll("[data-mov]").forEach(b => b.onclick = () => {
     const n = +b.dataset.mov;
-    S.agFecha = n===0 ? hoyISO() : addD(S.agFecha, n * (S.agModo==="semana"?7:1));
+    if(n===0) S.agFecha = hoyISO();
+    else if(S.agModo==="mes"){ const d = dISO(S.agFecha); d.setDate(1); d.setMonth(d.getMonth()+n); S.agFecha = iso(d); }
+    else S.agFecha = addD(S.agFecha, n * (S.agModo==="semana"?7:1));
     render();
   });
   v.querySelectorAll("[data-slot]").forEach(b => b.onclick = () => {
     const [f,h] = b.dataset.slot.split("|");
     formTarea({ fecha:f, hora:h });
   });
+  v.querySelectorAll("[data-dia]").forEach(b => b.onclick = () => { S.agFecha=b.dataset.dia; render(); });
+  v.querySelectorAll("[data-verdia]").forEach(b => b.onclick = () => { S.agModo="dia"; render(); });
   v.querySelectorAll("[data-proy]").forEach(b => b.onclick = () => { S.proy=b.dataset.proy; render(); });
   v.querySelectorAll("[data-volver]").forEach(b => b.onclick = () => { S.proy=null; render(); });
   v.querySelectorAll("[data-editproy]").forEach(b => b.onclick = e => { e.stopPropagation(); formProyecto(proyDe(b.dataset.editproy)); });
