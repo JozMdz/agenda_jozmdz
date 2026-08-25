@@ -8,6 +8,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tablero">
 <title>Tablero</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <style>
 :root{
   --bg:#0B0C11; --panel:#15171F; --panel2:#1E212B; --line:#2B2F3D;
@@ -1072,6 +1075,8 @@ sb.auth.onAuthStateChange((ev, sesion) => {
   if(ev==="SIGNED_IN" && !S.user){ S.user = sesion.user; abrir(); }
 });
 arranque();
+if("serviceWorker" in navigator)
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(()=>{}));
 </script>
 </body>
 </html>
