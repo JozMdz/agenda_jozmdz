@@ -173,6 +173,16 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
 .now{position:absolute;left:0;right:0;height:1.5px;background:var(--alert);z-index:2;pointer-events:none}
 .now::before{content:'';position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--alert)}
 
+.grid-ad{display:flex;border-bottom:1px solid var(--line);background:rgba(11,12,17,.9)}
+.grid-ad .gh-sp{width:38px;flex:none;font-family:var(--mono);font-size:8.5px;color:var(--dim2);
+  display:flex;align-items:center;justify-content:flex-end;padding-right:5px;text-align:right;line-height:1.1}
+.ad-c{flex:1;min-width:0;padding:4px 2px;display:flex;flex-direction:column;gap:3px;
+  border-left:1px solid var(--line);min-height:26px}
+.ad-i{font-size:10px;padding:3px 5px;border-radius:5px;border-left:2.5px solid;text-align:left;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.mas{display:block;width:100%;text-align:center;margin-top:16px;padding:11px;
+  font-size:13.5px;font-weight:600;color:var(--escuela)}
+
 /* ---------- Mes ---------- */
 .mes{margin:2px 14px 0}
 .mes-h{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:6px}
@@ -491,7 +501,7 @@ function fila(t, verFecha){
   const cl = Array.isArray(t.checklist) ? t.checklist : [];
   const hechos = cl.filter(c=>c.h).length;
   const meta = [
-    t.hora ? `<span class="time">${corto(t.hora)}</span>` : "",
+    t.hora ? `<span class="time">${corto(t.hora)}</span>` : (t.fecha ? `<span class="pill">todo el día</span>` : ""),
     verFecha||late ? `<span>${nomDia(t.fecha)}</span>` : "",
     pr ? `<span>${esc(pr.nombre)}</span>` : "",
     cl.length ? `<span>${hechos}/${cl.length}</span>` : "",
@@ -575,6 +585,12 @@ function vRejilla(){
   let h = barraAg(titulo);
   h += `<div class="grid"><div class="grid-h"><span class="gh-sp"></span>` +
     dias.map(k=>`<span class="gh-d ${k===hoyISO()?"today":""}">${semana?DIAS[(dISO(k).getDay()+6)%7]:""}<b>${dISO(k).getDate()}</b></span>`).join("") +
+    `</div><div class="grid-ad"><span class="gh-sp">todo<br>el día</span>` +
+    dias.map(k=>`<span class="ad-c">` + porArea(S.tareas).filter(t=>t.fecha===k && !t.hora).map(t=>{
+      const a = AREAS[t.area]||AREAS.personal;
+      return `<button class="ad-i ${t.hecha?"done":""}" data-abrir="${t.id}"
+        style="border-left-color:${a.v};background:color-mix(in srgb,${a.v} 22%,transparent)">${esc(t.titulo)}</button>`;
+    }).join("") + `</span>`).join("") +
     `</div><div class="grid-b"><div class="hours">` +
     Array.from({length:H1-H0},(_,i)=>`<div class="hr"><span>${p2(H0+i)}</span></div>`).join("") +
     `</div><div class="cols">`;
@@ -785,93 +801,113 @@ function hoja(html){
 function formTarea(t){
   t = t || {};
   const nuevo = !t.id;
+  let expand = !nuevo;                       // al editar se abre completo
   const f = {
     titulo:t.titulo||"", area:t.area||"trabajo", proyecto_id:t.proyecto_id||"",
-    fecha:t.fecha ?? hoyISO(), hora:corto(t.hora||""), duracion:t.duracion||60,
+    fecha:t.fecha ?? hoyISO(), hora:corto(t.hora||""), duracion:t.duracion??60,
     alta:!!t.alta, nota:t.nota||"", checklist: Array.isArray(t.checklist)?[...t.checklist]:[]
   };
   let dias = [], semanas = 4;
 
+  const leer = () => {
+    if($("f-tit")) f.titulo = $("f-tit").value;
+    if($("f-fec")) f.fecha  = $("f-fec").value || null;
+    if($("f-hor")) f.hora   = $("f-hor").value || null;
+    if($("f-proy")) f.proyecto_id = $("f-proy").value;
+    if($("f-dur"))  f.duracion    = +$("f-dur").value;
+    if($("f-not"))  f.nota        = $("f-not").value;
+    if($("f-sem"))  semanas       = +$("f-sem").value;
+    document.querySelectorAll("[data-cli]").forEach(i => { f.checklist[+i.dataset.cli].t = i.value; });
+  };
+
   const pintar = () => {
+    const segArea = `<div class="seg" id="f-area">${Object.entries(AREAS).map(([k,a])=>
+      `<button data-a="${k}" style="${f.area===k?`background:${a.v};color:#fff;border-color:transparent`
+        :`color:${a.v};border-color:${a.v}`}">${a.l}</button>`).join("")}</div>`;
+
     hoja(`<h2 class="sheet-h">${nuevo?"Nueva tarea":"Tarea"}</h2>
       ${!nuevo&&t.hecha?`<p class="sheet-s">Cerrada el ${new Date(t.hecha_en).toLocaleString("es-MX",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"})}</p>`:""}
+
       <label class="lab">Qué hay que hacer</label>
-      <input id="f-tit" class="fld" value="${esc(f.titulo)}" placeholder="Revisar capítulo 3">
-      <label class="lab">Área</label>
-      <div class="seg" id="f-area">${Object.entries(AREAS).map(([k,a])=>
-        `<button data-a="${k}" style="${f.area===k?`background:${a.v};color:var(--bg);border-color:transparent`:`color:${a.v};border-color:${a.v}`}">${a.l}</button>`).join("")}</div>
+      <input id="f-tit" class="fld" value="${esc(f.titulo)}" placeholder="Revisar capítulo 3" enterkeyhint="done">
+
+      <label class="lab">Área</label>${segArea}
+
+      <div class="two" style="margin-top:16px">
+        <div><label class="lab" style="margin-top:0">Fecha</label>
+          <input id="f-fec" type="date" class="fld" value="${f.fecha||""}"></div>
+        <div><label class="lab" style="margin-top:0">Hora</label>
+          <input id="f-hor" type="time" class="fld" value="${f.hora||""}"></div></div>
+      <div class="mact" style="padding:9px 0 0">
+        <button data-pos="0">Hoy</button><button data-pos="1">Mañana</button>
+        <button data-pos="7">+1 sem</button>
+        <button data-hora="x" style="${!f.hora?"border-color:var(--escuela);color:var(--escuela)":""}">Todo el día</button></div>
+
+      ${expand ? `
       <label class="lab">Proyecto</label>
       <select id="f-proy" class="fld"><option value="">Sin proyecto</option>${
         S.proyectos.filter(p=>!p.archivado).map(p=>`<option value="${p.id}" ${f.proyecto_id===p.id?"selected":""}>${esc(p.nombre)}</option>`).join("")}</select>
-      <div class="two"><div><label class="lab">Fecha</label>
-        <input id="f-fec" type="date" class="fld" value="${f.fecha||""}"></div>
-        <div><label class="lab">Hora</label><input id="f-hor" type="time" class="fld" value="${f.hora}"></div></div>
-      <div class="mact" style="padding:9px 0 0">
-        <button data-pos="0">Hoy</button><button data-pos="1">Mañana</button>
-        <button data-pos="7">+1 sem</button><button data-pos="x">Sin fecha</button></div>
+
       <label class="lab">Duración</label>
-      <select id="f-dur" class="fld">${[15,30,45,60,90,120,180].map(m=>
+      <select id="f-dur" class="fld">${[15,30,45,60,90,120,180,240].map(m=>
         `<option value="${m}" ${f.duracion===m?"selected":""}>${m<60?m+" min":(m/60)+" h"}</option>`).join("")}</select>
+
       ${nuevo?`<label class="lab">Repetir en estos días</label>
       <div class="dchips" id="f-dias">${DIAS.map((d,i)=>`<button data-d="${i}" class="dchip ${dias.includes(i)?"on":""}">${d}</button>`).join("")}</div>
       <label class="lab">Durante cuántas semanas</label>
       <select id="f-sem" class="fld">${[1,2,4,8,12,16].map(n=>`<option value="${n}" ${semanas===n?"selected":""}>${n} semana${n>1?"s":""}</option>`).join("")}</select>`:""}
-      <button id="f-alta" class="btn" style="margin-top:16px;display:flex;align-items:center;gap:9px;justify-content:flex-start;${f.alta?"border-color:var(--alert);color:var(--alert)":""}">
-        <span style="font-family:var(--mono)">${f.alta?"!":"○"}</span> Prioridad alta</button>
+
+      <button id="f-alta" class="btn" style="margin-top:16px;display:flex;align-items:center;gap:9px;justify-content:flex-start;${f.alta?"border-color:var(--alto);color:var(--alto)":""}">
+        <span class="mono">${f.alta?"!":"○"}</span> Prioridad alta</button>
+
       <label class="lab">Pasos</label><div id="f-cl">${f.checklist.map((c,i)=>
         `<div class="cl-row"><button data-clt="${i}" class="chk-b" style="${c.h?"border-color:var(--ok);color:var(--ok)":""}">${c.h?"✓":""}</button>
          <input type="text" data-cli="${i}" value="${esc(c.t)}" placeholder="Paso"><button data-clx="${i}" class="cl-x">×</button></div>`).join("")}
         <button id="f-cladd" class="sec-a" style="margin-top:6px">+ Agregar paso</button></div>
+
       <label class="lab">Nota</label>
       <textarea id="f-not" class="fld" rows="2" placeholder="Opcional">${esc(f.nota)}</textarea>
+      ` : `<button id="f-mas" class="mas">Más opciones ⌄</button>`}
+
       <div class="acts"><button id="f-ok" class="btn btn-p">Guardar</button><button id="f-no" class="btn">Cancelar</button></div>
       ${nuevo?"":`<div class="mact" style="padding:12px 0 0"><button id="f-dup">Duplicar</button>
         <button id="f-del" style="color:var(--alert)">Eliminar</button></div>`}`);
 
-    const leer = () => {
-      f.titulo=$("f-tit").value; f.proyecto_id=$("f-proy").value; f.fecha=$("f-fec").value||null;
-      f.hora=$("f-hor").value||null; f.duracion=+$("f-dur").value; f.nota=$("f-not").value;
-      document.querySelectorAll("[data-cli]").forEach(i=>{ f.checklist[+i.dataset.cli].t = i.value; });
-      if(nuevo) semanas = +$("f-sem").value;
-    };
-    document.querySelectorAll("#f-area button").forEach(b => b.onclick = () => { leer(); f.area=b.dataset.a; pintar(); });
-    document.querySelectorAll("#f-dias button").forEach(b => b.onclick = () => {
-      leer(); const i=+b.dataset.d; dias = dias.includes(i) ? dias.filter(x=>x!==i) : [...dias,i]; pintar(); });
-    $("f-alta").onclick = () => { leer(); f.alta=!f.alta; pintar(); };
-    $("f-cladd").onclick = () => { leer(); f.checklist.push({t:"",h:false}); pintar(); };
-    document.querySelectorAll("[data-clt]").forEach(b => b.onclick = () => { leer(); const c=f.checklist[+b.dataset.clt]; c.h=!c.h; pintar(); });
+    document.querySelectorAll("#f-area button").forEach(b => b.onclick = () => { leer(); f.area = b.dataset.a; pintar(); });
+    document.querySelectorAll("[data-pos]").forEach(b => b.onclick = () => { leer(); f.fecha = addD(hoyISO(), +b.dataset.pos); pintar(); });
+    document.querySelectorAll("[data-hora]").forEach(b => b.onclick = () => { leer(); f.hora = null; pintar(); });
+    if($("f-mas")) $("f-mas").onclick = () => { leer(); expand = true; pintar(); };
+    if($("f-dias")) document.querySelectorAll("#f-dias button").forEach(b => b.onclick = () => {
+      leer(); const i = +b.dataset.d; dias = dias.includes(i) ? dias.filter(x=>x!==i) : [...dias,i]; pintar(); });
+    $("f-alta").onclick  = () => { leer(); f.alta = !f.alta; pintar(); };
+    if($("f-cladd")) $("f-cladd").onclick = () => { leer(); f.checklist.push({t:"",h:false}); pintar(); };
+    document.querySelectorAll("[data-clt]").forEach(b => b.onclick = () => { leer(); f.checklist[+b.dataset.clt].h = !f.checklist[+b.dataset.clt].h; pintar(); });
     document.querySelectorAll("[data-clx]").forEach(b => b.onclick = () => { leer(); f.checklist.splice(+b.dataset.clx,1); pintar(); });
-    document.querySelectorAll("[data-pos]").forEach(b => b.onclick = () => {
-      leer();
-      f.fecha = b.dataset.pos==="x" ? null : addD(hoyISO(), +b.dataset.pos);
-      pintar();
-    });
-    if($("f-dup")) $("f-dup").onclick = async () => {
-      leer();
-      await guardar("ag_tareas", { titulo:f.titulo.trim()+" (copia)", area:f.area, proyecto_id:f.proyecto_id||null,
-        fecha:f.fecha, hora:f.hora, duracion:f.duracion, alta:f.alta, nota:f.nota.trim()||null,
-        checklist:f.checklist.filter(c=>c.t.trim()) });
-      cerrar();
-    };
     $("f-no").onclick = cerrar;
-    if($("f-del")) $("f-del").onclick = () => { if(confirm("¿Eliminar la tarea?")){ cerrar(); borrar("ag_tareas", t.id); } };
+    $("f-tit").onkeydown = e => { if(e.key==="Enter"){ e.preventDefault(); $("f-ok").click(); } };
+    if(nuevo && !f.titulo) $("f-tit").focus();
+
+    const arma = () => ({ titulo:f.titulo.trim(), area:f.area, proyecto_id:f.proyecto_id||null,
+      fecha:f.fecha, hora:f.hora||null, duracion:f.duracion, alta:f.alta,
+      nota:(f.nota||"").trim()||null, checklist:f.checklist.filter(c=>c.t.trim()) });
+
+    if($("f-dup")) $("f-dup").onclick = async () => {
+      leer(); await guardar("ag_tareas", { ...arma(), titulo:f.titulo.trim()+" (copia)" }); cerrar(); };
+    if($("f-del")) $("f-del").onclick = () => {
+      if(confirm("¿Eliminar la tarea?")){ cerrar(); borrar("ag_tareas", t.id); } };
 
     $("f-ok").onclick = async () => {
       leer();
       if(!f.titulo.trim()){ $("f-tit").focus(); return; }
-      f.checklist = f.checklist.filter(c=>c.t.trim());
-      const base = { titulo:f.titulo.trim(), area:f.area, proyecto_id:f.proyecto_id||null,
-        fecha:f.fecha, hora:f.hora, duracion:f.duracion, alta:f.alta,
-        nota:f.nota.trim()||null, checklist:f.checklist };
-      $("f-ok").disabled = true;
-
+      const base = arma();
+      $("f-ok").disabled = true; $("f-ok").textContent = "Guardando…";
       if(nuevo && dias.length && f.fecha){
         const filas = [], l0 = lunes(f.fecha);
-        for(let s=0;s<semanas;s++) dias.forEach(d=>{
-          const k = addD(addD(l0,s*7), d);
+        for(let s=0;s<semanas;s++) dias.forEach(d => {
+          const k = addD(addD(l0, s*7), d);
           if(k >= f.fecha) filas.push({ ...base, fecha:k });
         });
-        await guardar("ag_tareas", filas.length?filas:[base]);
+        await guardar("ag_tareas", filas.length ? filas : [base]);
       } else {
         await guardar("ag_tareas", nuevo ? base : { id:t.id, ...base });
       }
