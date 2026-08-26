@@ -256,6 +256,25 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
   font-size:27px;font-weight:400;display:flex;align-items:center;justify-content:center;
   box-shadow:0 6px 20px rgba(0,0,0,.4)}
 
+/* ---------- Voz ---------- */
+.mic{position:fixed;right:18px;bottom:calc(146px + env(safe-area-inset-bottom));z-index:29;
+  width:54px;height:54px;border-radius:50%;color:#fff;font-size:23px;
+  background:linear-gradient(135deg,var(--escuela),var(--personal));
+  display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+.voz{position:fixed;inset:0;z-index:60;background:rgba(11,12,17,.96);backdrop-filter:blur(10px);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px;text-align:center}
+.voz-orb{width:104px;height:104px;border-radius:50%;
+  background:linear-gradient(135deg,var(--escuela),var(--personal),var(--alto));
+  animation:pulso 1.5s ease-in-out infinite;box-shadow:0 0 60px rgba(62,155,224,.45)}
+@keyframes pulso{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.13);opacity:1}}
+.voz-h{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin:0}
+.voz-tx{font-size:21px;line-height:1.4;margin:0;max-width:460px;min-height:62px}
+.toast{position:fixed;left:14px;right:14px;bottom:calc(88px + env(safe-area-inset-bottom));z-index:70;
+  background:rgba(30,33,43,.98);border:1px solid var(--line);border-radius:15px;padding:13px 15px;
+  display:flex;align-items:center;gap:13px;box-shadow:0 8px 28px rgba(0,0,0,.55);
+  max-width:560px;margin:0 auto}
+@media (prefers-reduced-motion:reduce){.voz-orb{animation:none}}
+
 /* ---------- Modal ---------- */
 .ov{position:fixed;inset:0;z-index:50;background:rgba(10,14,22,.68);display:flex;
   align-items:flex-end;justify-content:center}
@@ -313,7 +332,9 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
 
   <main id="view" class="view"></main>
 
+  <button class="mic" id="mic" aria-label="Dictar tarea">&#127908;</button>
   <button class="fab" id="fab">+</button>
+  <div id="toast" class="toast hide"></div>
 
   <nav class="nav">
     <button data-tab="hoy" class="on"><span class="ic">◎</span>Hoy</button>
@@ -1058,6 +1079,172 @@ function aplicarRutina(r){
   };
 }
 
+/* ---------- Interpretación del dictado ---------- */
+const SEMANA = { domingo:0, lunes:1, martes:2, miercoles:3, jueves:4, viernes:5, sabado:6 };
+const MESES = { enero:0, febrero:1, marzo:2, abril:3, mayo:4, junio:5, julio:6,
+  agosto:7, septiembre:8, setiembre:8, octubre:9, noviembre:10, diciembre:11 };
+const CLAVES = {
+  escuela:  ["escuela","tesis","doctorado","capitulo","asesor","articulo","clase","maestria","universidad","seminario","paper","revision de literatura"],
+  trabajo:  ["trabajo","c5","turno","guardia","reporte","oficina","junta","analista","ppt","presentacion","tablero","operativo","bitacora","auditoria"],
+  personal: ["personal","casa","familia","esposa","hijo","doctor","dentista","banco","pago","consultorio","despensa","cita medica"]
+};
+
+const MAPA = {á:"a",à:"a",ä:"a",â:"a",é:"e",è:"e",ë:"e",ê:"e",í:"i",ì:"i",ï:"i",î:"i",
+  ó:"o",ò:"o",ö:"o",ô:"o",ú:"u",ù:"u",ü:"u",û:"u",ñ:"n"};
+// conserva la longitud carácter por carácter: los índices sirven sobre el texto original
+const fold = s => s.toLowerCase().replace(/[áàäâéèëêíìïîóòöôúùüûñ]/g, c => MAPA[c]);
+
+function parseVoz(crudo, hoy){
+  const t = fold(crudo);
+  const base = hoy ? new Date(hoy) : new Date();
+  base.setHours(0,0,0,0);
+  const p2 = n => String(n).padStart(2,"0");
+  const iso = d => `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+  const mas = n => { const d = new Date(base); d.setDate(d.getDate()+n); return iso(d); };
+  const cortes = [];            // tramos de texto que son fecha/hora, se quitan del título
+  const fechas = [];
+  let hora = null, alta = false;
+
+  const cazar = (re, fn) => {
+    let m;
+    const rx = new RegExp(re, "g");
+    while((m = rx.exec(t)) !== null){ if(fn(m) !== false) cortes.push([m.index, m.index + m[0].length]); }
+  };
+
+  /* --- hora (primero, para que "de la mañana" no se confunda con el día) --- */
+  cazar("\\ba\\s+las?\\s+(\\d{1,2})(?::(\\d{2}))?\\s*(de\\s+la\\s+(?:manana|tarde|noche)|am|pm|hrs?|horas)?", m => {
+    let h = +m[1]; const min = m[2] ? +m[2] : 0; const suf = m[3] || "";
+    if(/tarde|noche|pm/.test(suf) && h < 12) h += 12;
+    if(/manana|am/.test(suf) && h === 12) h = 0;
+    if(!suf && h >= 1 && h <= 6) h += 12;              // "a las 3" manejando = 15:00
+    if(h > 23) return false;
+    hora = `${p2(h)}:${p2(min)}`;
+  });
+
+  /* --- prioridad --- */
+  cazar("\\b(urgente|es urgente|prioridad alta|muy importante)\\b", () => { alta = true; });
+
+  /* --- fechas relativas --- */
+  cazar("\\bhoy\\b",                        () => fechas.push(mas(0)));
+  cazar("\\bpasado\\s+manana\\b",           () => fechas.push(mas(2)));
+  cazar("(?<!de\\s*la\\s)(?<!pasado\\s)\\bmanana\\b", () => fechas.push(mas(1)));
+  cazar("\\b(?:la\\s+)?proxima semana\\b",  () => fechas.push(mas(7)));
+  cazar("\\ben\\s+(\\d{1,2})\\s+dias?\\b",  m => fechas.push(mas(+m[1])));
+
+  /* --- días de la semana --- */
+  cazar("\\b(?:el\\s+|este\\s+|la\\s+)?(proximo|proxima|siguiente)?\\s*(lunes|martes|miercoles|jueves|viernes|sabado|domingo)\\b", m => {
+    const objetivo = SEMANA[m[2]];
+    let delta = (objetivo - base.getDay() + 7) % 7;
+    if(delta === 0) delta = 7;                          // nunca hoy: el próximo que venga
+    const cand = new Date(base); cand.setDate(cand.getDate()+delta);
+    // "próximo X": si cae dentro de la semana en curso (lun-dom), brinca a la siguiente
+    const finSemana = new Date(base);
+    finSemana.setDate(finSemana.getDate() + ((7 - ((base.getDay()+6)%7)) % 7 || 7));
+    if(m[1] && cand < finSemana) cand.setDate(cand.getDate()+7);
+    fechas.push(iso(cand));
+  });
+
+  /* --- fechas con número de día --- */
+  cazar("\\bel\\s+(\\d{1,2})\\s+de\\s+(" + Object.keys(MESES).join("|") + ")\\b", m => {
+    const d = new Date(base.getFullYear(), MESES[m[2]], +m[1]);
+    if(d < base) d.setFullYear(d.getFullYear()+1);
+    fechas.push(iso(d));
+  });
+  cazar("\\bel\\s+(\\d{1,2})\\b(?!\\s*(?::|de\\s|hrs|horas))", m => {
+    const dia = +m[1]; if(dia < 1 || dia > 31) return false;
+    const d = new Date(base.getFullYear(), base.getMonth(), dia);
+    if(d < base) d.setMonth(d.getMonth()+1);
+    fechas.push(iso(d));
+  });
+
+  /* --- título: lo que queda al quitar los tramos de fecha/hora --- */
+  cortes.sort((a,b) => b[0]-a[0]);
+  let titulo = crudo;
+  cortes.forEach(([a,b]) => { titulo = titulo.slice(0,a) + " " + titulo.slice(b); });
+  titulo = titulo
+    .replace(/^\s*(agenda(r|me)?|agrega(r|me)?|anota(r|me)?|apunta(r|me)?|recu[eé]rda(me)?|recordar|nueva tarea|tarea|pon(er|me)?)\s*:?\s*/i, "")
+    .replace(/\b(para|el d[ií]a|y tambi[eé]n|tambi[eé]n)\b/gi, " ")
+    .replace(/[,;]+/g, " ")
+    .replace(/\s+y\s*$/i, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  /* --- área por palabras clave --- */
+  let area = "trabajo";
+  for(const [k, palabras] of Object.entries(CLAVES))
+    if(palabras.some(p => t.includes(p))){ area = k; break; }
+
+  const unicas = [...new Set(fechas)].sort();
+  return {
+    titulo: titulo ? titulo[0].toUpperCase() + titulo.slice(1) : "",
+    area, alta, hora,
+    fechas: unicas.length ? unicas : [mas(0)]
+  };
+}
+
+/* ---------- Dictado ---------- */
+let toastT;
+function toast(msg, ids){
+  const el = $("toast");
+  el.innerHTML = `<span style="flex:1;font-size:13.5px;line-height:1.35">${esc(msg)}</span>` +
+    (ids && ids.length ? `<button id="t-undo" style="color:var(--alert);font-weight:600;font-size:13px;flex:none">Deshacer</button>` : "") +
+    `<button id="t-x" style="color:var(--dim2);font-size:17px;flex:none">&times;</button>`;
+  el.classList.remove("hide");
+  if($("t-undo")) $("t-undo").onclick = async () => {
+    el.classList.add("hide");
+    await sb.from("ag_tareas").delete().in("id", ids);
+    await cargar(); render();
+  };
+  $("t-x").onclick = () => el.classList.add("hide");
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.add("hide"), 10000);
+}
+
+function dictar(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ alert("Este navegador no reconoce voz.\nEn Android usa Chrome; en iPad, Safari."); return formTarea({}); }
+  const r = new SR();
+  r.lang = "es-MX"; r.interimResults = true; r.continuous = false; r.maxAlternatives = 1;
+  let texto = "", cancelado = false;
+
+  $("modal").innerHTML = `<div class="voz">
+    <div class="voz-orb"></div>
+    <p class="voz-h">Escuchando</p>
+    <p class="voz-tx" id="voz-tx" style="color:var(--dim2)">Di qué hacer y para cuándo</p>
+    <button class="btn" id="voz-x" style="min-width:160px;margin-top:8px">Cancelar</button></div>`;
+  $("voz-x").onclick = () => { cancelado = true; try{ r.stop(); }catch(_){} cerrar(); };
+
+  r.onresult = e => {
+    texto = Array.from(e.results).map(x => x[0].transcript).join(" ");
+    const el = $("voz-tx");
+    if(el){ el.textContent = texto; el.style.color = "var(--tx)"; }
+  };
+  r.onerror = e => {
+    if(cancelado) return;
+    cerrar();
+    if(e.error === "not-allowed") alert("Chrome necesita permiso del micrófono para esta página.");
+    else if(e.error !== "aborted") toast("No se escuchó nada. Intenta otra vez.");
+  };
+  r.onend = async () => {
+    if(cancelado) return;
+    cerrar();
+    if(texto.trim()) await crearDesdeVoz(texto);
+  };
+  try{ r.start(); }catch(_){ cerrar(); }
+}
+
+async function crearDesdeVoz(texto){
+  const p = parseVoz(texto);
+  if(!p.titulo){ toast("No entendí qué agendar."); return; }
+  const filas = p.fechas.map(f => ({ titulo:p.titulo, area:p.area, fecha:f, hora:p.hora,
+    duracion:60, alta:p.alta, checklist:[], proyecto_id:null, nota:null }));
+  const { data, error } = await sb.from("ag_tareas").insert(filas).select("id");
+  if(error){ alert("No se guardó: " + error.message); return; }
+  await cargar(); render();
+  const cuando = p.fechas.map(f => nomDia(f)).join(" · ");
+  toast(`${p.titulo} — ${cuando}${p.hora ? " a las " + p.hora : ""}`, (data||[]).map(x => x.id));
+}
+
 /* ===================== Arranque ===================== */
 document.querySelectorAll(".nav button").forEach(b => b.onclick = () => {
   S.tab = b.dataset.tab; if(S.tab!=="proyectos") S.proy = null; render();
@@ -1069,6 +1256,7 @@ $("fab").onclick = () => {
   formTarea({ fecha:hoyISO() });
 };
 $("btn-menu").onclick = formMenu;
+$("mic").onclick = dictar;
 $("lg-go").onclick = entrar;
 $("lg-pass").onkeydown = e => { if(e.key==="Enter") entrar(); };
 sb.auth.onAuthStateChange((ev, sesion) => {
