@@ -381,6 +381,7 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
     </div>
     <div class="hd-r">
       <span class="dot" id="dot" title="Conectado"></span>
+      <!-- Botón de menú hamburguesa -->
       <button class="hd-out" id="btn-menu" style="font-size:24px;letter-spacing:0;line-height:1">☰</button>
     </div>
   </header>
@@ -436,9 +437,9 @@ const TABS = ["hoy", "pendientes", "agenda", "proyectos", "horario", "repaso"];
 const H0 = 6, H1 = 23, PX = 44;
 
 const HORARIO_DOCENCIA = [
-  { clave:"DCC09", nombre:"Entornos Inteligentes", nivel:"3°", aula:"POSGRADO-B", prof:"Santiago Pineda", profCorto:"Prof. Santiago Pineda", dias:{ Mar:"10:00-11:00", Mié:"10:00-11:00", Jue:"10:00-11:00" } },
-  { clave:"DCC08", nombre:"Realidad Virtual", nivel:"3°", aula:"POSGRADO-B", prof:"Mayra Treviño", profCorto:"Profra. Mayra Treviño", dias:{ Lun:"11:00-12:00", Jue:"11:00-12:00", Vie:"11:00-12:00" } },
-  { clave:"DCC07", nombre:"Seminario de Investigación II", nivel:"3°", aula:"POSGRADO-B", prof:"Rocío Vargas", profCorto:"Profra. Rocío Vargas", dias:{ Mar:"11:00-12:00", Mié:"11:00-12:00" } }
+  { clave:"DCC09", nombre:"Entornos Inteligentes", nivel:"3°", aula:"POSGRADO-B", prof:"Santiago Pineda Aurelio Alejandro", profCorto:"Santiago Pineda", dias:{ Mar:"10:00-11:00", Mié:"10:00-11:00", Jue:"10:00-11:00" } },
+  { clave:"DCC08", nombre:"Realidad Virtual", nivel:"3°", aula:"POSGRADO-B", prof:"Treviño Berrones Mayra Guadalupe", profCorto:"Mayra Treviño", dias:{ Lun:"11:00-12:00", Jue:"11:00-12:00", Vie:"11:00-12:00" } },
+  { clave:"DCC07", nombre:"Seminario de Investigación II", nivel:"3°", aula:"POSGRADO-B", prof:"Vargas Castilleja Rocío del Carmen", profCorto:"Rocío Vargas", dias:{ Mar:"11:00-12:00", Mié:"11:00-12:00" } }
 ];
 
 const S = {
@@ -683,7 +684,7 @@ function vHoy(){
       const clasesHoy = HORARIO_DOCENCIA.filter(m => m.dias[diaAbrev]);
       if(clasesHoy.length) {
           h += `<div class="sec"><div class="sec-h"><h2 class="sec-t">Clases de hoy</h2></div><div class="list">` + 
-          clasesHoy.map(m => `<button class="row pcard" data-newclass="${m.clave}|${m.profCorto}" style="border-color:color-mix(in srgb,var(--escuela) 45%,transparent);background:color-mix(in srgb,var(--escuela) 7%,var(--panel));flex-direction:row;align-items:center;padding:10px 12px;gap:10px">
+          clasesHoy.map(m => `<button class="row pcard" data-newclass="${m.clave}" style="border-color:color-mix(in srgb,var(--escuela) 45%,transparent);background:color-mix(in srgb,var(--escuela) 7%,var(--panel));flex-direction:row;align-items:center;padding:10px 12px;gap:10px">
             <div style="flex:1;text-align:left">
               <div style="font-family:var(--mono);font-size:10px;color:var(--escuela);font-weight:700">${m.clave}</div>
               <div style="font-size:13.5px;font-weight:600;margin-top:1px">${esc(m.nombre)}</div>
@@ -936,7 +937,7 @@ function vHorario(){
     diasSemana.forEach(d => {
       const mat = HORARIO_DOCENCIA.find(m => m.dias[d] === b.range);
       if(mat){
-        gridHTML += `<button class="sch-cell act" data-newclass="${mat.clave}|${mat.profCorto}">
+        gridHTML += `<button class="sch-cell act" data-newclass="${mat.clave}">
           <span class="sch-tag">${esc(mat.nombre)}</span>
           <span class="sch-sub">${esc(mat.profCorto)}</span>
         </button>`;
@@ -950,7 +951,7 @@ function vHorario(){
   let listaHTML = `<div class="list" style="margin-top:14px">` +
     HORARIO_DOCENCIA.map(m => {
       const diasTxt = Object.entries(m.dias).map(([d,h]) => `${d} ${h}`).join(" · ");
-      return `<button class="row pcard" data-newclass="${m.clave}|${m.profCorto}" style="border-color:color-mix(in srgb,var(--escuela) 45%,transparent);background:color-mix(in srgb,var(--escuela) 7%,var(--panel));flex-direction:column;padding:12px;gap:6px">
+      return `<button class="row pcard" data-newclass="${m.clave}" style="border-color:color-mix(in srgb,var(--escuela) 45%,transparent);background:color-mix(in srgb,var(--escuela) 7%,var(--panel));flex-direction:column;padding:12px;gap:6px">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
           <div>
             <span style="font-family:var(--mono);font-size:10px;color:var(--escuela);font-weight:700">${m.clave} (${m.nivel})</span>
@@ -1068,7 +1069,7 @@ function enlazar(){
     swipeY = e.changedTouches[0].screenY;
   }, {passive:true});
   v.addEventListener("touchend", e => {
-    if(e.target.closest(".ag-container")) return; 
+    if(e.target.closest(".ag-container")) return; // Omite si es la agenda interactiva
     const endX = e.changedTouches[0].screenX;
     const endY = e.changedTouches[0].screenY;
     const diffX = swipeX - endX;
@@ -1101,12 +1102,12 @@ function enlazar(){
   v.querySelectorAll("[data-nuevanota]").forEach(b => b.onclick = () => formNota(b.dataset.nuevanota));
   v.querySelectorAll("[data-delnota]").forEach(b => b.onclick = () => { if(confirm("¿Eliminar esta nota?")) borrar("ag_notas", b.dataset.delnota); });
 
-  // Crear tarea desde Horario / Clases Hoy con el nombre del profesor
+  // Crear tarea desde Horario / Clases Hoy
   v.querySelectorAll("[data-newclass]").forEach(b => b.onclick = () => {
-    const [clave, prof] = b.dataset.newclass.split("|");
+    const clave = b.dataset.newclass;
     const proy = S.proyectos.find(p => p.nombre.toLowerCase().includes(clave.toLowerCase()));
     formTarea({ 
-      titulo: `${prof} - `, 
+      titulo: `${clave} - `, 
       area: "escuela", 
       proyecto_id: proy ? proy.id : "" 
     });
