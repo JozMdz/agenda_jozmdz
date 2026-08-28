@@ -434,14 +434,9 @@ const AREAS = {
 const DIAS = ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"];
 const H0 = 6, H1 = 23, PX = 44;
 
-const HORARIO_DOCENCIA = [
-  { clave:"DCC09", nombre:"Entornos Inteligentes", nivel:"3°", aula:"POSGRADO-B", prof:"Santiago Pineda Aurelio Alejandro", profCorto:"Prof. Santiago Pineda", dias:{ Mar:"10:00-11:00", Mié:"10:00-11:00", Jue:"10:00-11:00" } },
-  { clave:"DCC08", nombre:"Realidad Virtual", nivel:"3°", aula:"POSGRADO-B", prof:"Treviño Berrones Mayra Guadalupe", profCorto:"Profra. Mayra Treviño", dias:{ Lun:"11:00-12:00", Jue:"11:00-12:00", Vie:"11:00-12:00" } },
-  { clave:"DCC07", nombre:"Seminario de Investigación II", nivel:"3°", aula:"POSGRADO-B", prof:"Vargas Castilleja Rocío del Carmen", profCorto:"Profra. Rocío Vargas", dias:{ Mar:"11:00-12:00", Mié:"11:00-12:00" } }
-];
 
 const S = {
-  user:null, proyectos:[], tareas:[], notas:[], rutinas:[], q:"",
+  user:null, proyectos:[], tareas:[], notas:[], rutinas:[], materias:[], q:"",
   tab:"hoy", filtro:"todas", masHist:false, agModo:"mes", agFecha:null, proy:null, verHechas:false
 };
 
@@ -584,6 +579,7 @@ async function cargar(){
     if(pr.error||ta.error||no.error) throw (pr.error||ta.error||no.error);
     S.proyectos = pr.data || []; S.tareas = ta.data || []; S.notas = no.data || [];
     try{ const r = await sb.from("ag_rutinas").select("*").order("nombre"); S.rutinas = r.data || []; }catch(_){ S.rutinas = []; }
+    try{ const m = await sb.from("ag_materias").select("*").order("clave"); S.materias = m.data || []; }catch(_){ S.materias = []; }
     $("dot").classList.remove("off"); $("dot").title = "Conectado";
   }catch(e){
     $("dot").classList.add("off"); $("dot").title = "Sin conexión con la base";
@@ -592,7 +588,7 @@ async function cargar(){
 }
 
 function suscribir(){
-  ["ag_tareas","ag_proyectos","ag_notas"].forEach(t =>
+  ["ag_tareas","ag_proyectos","ag_notas","ag_materias"].forEach(t =>
     sb.channel("ch_"+t)
       .on("postgres_changes",{event:"*",schema:"public",table:t}, async () => { await cargar(); render(false); })
       .subscribe()
@@ -691,7 +687,6 @@ function vHoy(){
 /* ---------- PENDIENTES ---------- */
 function vPendientes(){
   const hoy = deHoy(), late = vencidas();
-  const conHora = hoy.filter(t=>t.hora).length;
   const cerradasHoy = S.tareas.filter(t => t.hecha && localISO(t.hecha_en)===hoyISO()).length;
 
   let h = `<div class="kpis">
@@ -700,6 +695,7 @@ function vPendientes(){
     <div class="kpi"><div class="kpi-n" style="color:var(--ok)">${cerradasHoy}</div><div class="kpi-l">cerradas hoy</div></div>
   </div>`;
 
+  /* carril de la semana */
   const l = lunes(hoyISO());
   const max = Math.max(1, ...Array.from({length:7},(_,i)=> abiertas().filter(t=>t.fecha===addD(l,i)).length));
   h += `<div class="rail">` + Array.from({length:7},(_,i)=>{
@@ -715,22 +711,42 @@ function vPendientes(){
       <span class="rail-l">${DIAS[i]}</span></button>`;
   }).join("") + `</div>`;
 
-  if(late.length){
-    h += `<div class="sec"><div class="sec-h"><h2 class="sec-t alert">Arrastradas</h2>
-      <button class="sec-a" data-alhoy="1">Pasar todas a hoy</button></div>
-      <ul class="list">${ordena(late).map(fila).join("")}</ul></div>`;
-  }
-  h += `<div class="sec"><div class="sec-h"><h2 class="sec-t">Hoy · ${conHora} con horario</h2></div>` +
-    (hoy.length ? `<ul class="list">${ordena(hoy).map(fila).join("")}</ul>`
-      : `<div class="empty"><b>Día limpio</b><span>No tienes nada agendado para hoy. Toca + para abrir una tarea.</span></div>`) + `</div>`;
+  /* buscador */
+  const q = (S.q||"").trim().toLowerCase();
+  const coincide = t => !q || (t.titulo+" "+(t.nota||"")+" "+(proyDe(t.proyecto_id)?.nombre||"")).toLowerCase().includes(q);
+  h += `<div class="busca"><span>&#9906;</span><input id="q" value="${esc(S.q||"")}" placeholder="Buscar tarea, nota o proyecto"></div>`;
 
-  const prox = ordena(abiertas().filter(t=>t.fecha && t.fecha>hoyISO() && t.fecha<=addD(hoyISO(),7))).slice(0,6);
-  if(prox.length) h += `<div class="sec"><div class="sec-h"><h2 class="sec-t">Los próximos 7 días</h2></div>
-    <ul class="list">${prox.map(t=>fila(t,true)).join("")}</ul></div>`;
+  /* filtros de área + hechas */
+  h += `<div class="chips">` +
+    [["todas","Todas"],...Object.entries(AREAS).map(([k,a])=>[k,a.l])]
+      .map(([k,lb])=>`<button class="chip ${S.filtro===k?"on":""}" data-filtro="${k}" style="${
+        S.filtro===k&&AREAS[k]?`background:${AREAS[k].v};border-color:${AREAS[k].v};color:#fff`
+        :AREAS[k]?`color:${AREAS[k].v};border-color:${AREAS[k].v}`:""}">${lb}</button>`).join("") +
+    `<button class="chip ${S.verHechas?"on":""}" data-hechas="1" style="${S.verHechas?"":"border-color:var(--ok);color:var(--ok)"}">${S.verHechas?"↩ Abiertas":"✓ Hechas"}</button></div>`;
+
+  /* lista */
+  const ls = (S.verHechas
+    ? porArea(S.tareas.filter(t=>t.hecha)).sort((a,b)=>(b.hecha_en||"").localeCompare(a.hecha_en||""))
+    : ordena(porArea(abiertas()))).filter(coincide);
+
+  if(!ls.length)
+    return h + `<div class="empty"><b>${q?"Sin coincidencias":"Sin tareas"}</b><span>${
+      q?"Prueba con otra palabra." : S.verHechas?"Aquí se archiva lo que vas cerrando.":"Toca + para abrir la primera."}</span></div>`;
+
+  if(S.verHechas)
+    return h + `<div class="sec"><ul class="list">${ls.map(t=>fila(t,true)).join("")}</ul></div>`;
+
+  const grupos = {};
+  ls.forEach(t => { const k = !t.fecha ? "zz" : t.fecha < hoyISO() ? "00" : t.fecha; (grupos[k] ||= []).push(t); });
+  Object.keys(grupos).sort().forEach(k=>{
+    const lab = k==="00" ? "Arrastradas" : k==="zz" ? "Sin fecha" : nomDia(k);
+    h += `<div class="sec"><div class="sec-h"><h2 class="sec-t ${k==="00"?"alert":""}">${lab}<span style="opacity:.55"> ${grupos[k].length}</span></h2>` +
+      (k==="00" ? `<button class="sec-a" data-alhoy="1">Pasar todas a hoy</button>` : "") + `</div>
+      <ul class="list">${grupos[k].map(t=>fila(t, k!=="00" && k!=="zz" ? false : true)).join("")}</ul></div>`;
+  });
   return h;
 }
 
-/* ---------- Renglón ---------- */
 function fila(t, verFecha){
   const a = AREAS[t.area] || AREAS.personal;
   const late = !t.hecha && t.fecha && t.fecha < hoyISO();
@@ -908,59 +924,143 @@ function vProyecto(id){
 
 /* ---------- HORARIO ---------- */
 function vHorario(){
-  const diasSemana = ["Lun", "Mar", "Mié", "Jue", "Vie"];
-  const bloques = [
-    { label:"10:00", range:"10:00-11:00" },
-    { label:"11:00", range:"11:00-12:00" }
-  ];
+  const ms = S.materias.filter(m => m.activa !== false);
+  if(!ms.length) return `<div class="empty"><b>Sin materias</b>
+    <span>Toca + para capturar tus asignaturas: clave, horario, aula y profesor.</span></div>`;
 
-  let gridHTML = `<div class="sch-grid">
-    <div class="sch-h" style="text-align:right;padding-right:4px;">Hora</div>` +
-    diasSemana.map(d => `<div class="sch-h">${d}</div>`).join("");
+  const D = ["Lun","Mar","Mié","Jue","Vie","Sáb"];
+  // los días y bloques salen de los datos, no de una lista fija
+  const usados = new Set();
+  const rangos = new Set();
+  ms.forEach(m => Object.entries(m.dias||{}).forEach(([d,r]) => { usados.add(d); rangos.add(r); }));
+  const dias = D.filter(d => usados.has(d));
+  const bloques = [...rangos].sort((a,b) => a.localeCompare(b));
+  const periodo = ms.find(m => m.periodo)?.periodo || "Periodo actual";
 
-  bloques.forEach(b => {
-    gridHTML += `<div class="sch-time">${b.label}</div>`;
-    diasSemana.forEach(d => {
-      const mat = HORARIO_DOCENCIA.find(m => m.dias[d] === b.range);
-      if(mat){
-        gridHTML += `<button class="sch-cell act" data-materia="${mat.clave}">
-          <span class="sch-tag">${esc(mat.nombre)}</span>
-          <span class="sch-sub">${esc(mat.profCorto)}</span>
-        </button>`;
-      } else {
-        gridHTML += `<div class="sch-cell"><span style="color:var(--dim2);font-size:12px">-</span></div>`;
-      }
+  let grid = `<div class="sch-grid" style="grid-template-columns:52px repeat(${dias.length},1fr)">
+    <div class="sch-h" style="text-align:right;padding-right:4px">Hora</div>` +
+    dias.map(d => `<div class="sch-h">${d}</div>`).join("");
+
+  bloques.forEach(r => {
+    grid += `<div class="sch-time">${r.split("-")[0]}</div>`;
+    dias.forEach(d => {
+      const mat = ms.find(m => (m.dias||{})[d] === r);
+      grid += mat
+        ? `<button class="sch-cell act" data-materia="${mat.id}">
+             <span class="sch-tag">${esc(mat.nombre)}</span>
+             <span class="sch-sub">${esc(corto2(mat.profesor))}</span></button>`
+        : `<div class="sch-cell"><span style="color:var(--dim2);font-size:12px">-</span></div>`;
     });
   });
-  gridHTML += `</div>`;
+  grid += `</div>`;
 
-  let listaHTML = `<div class="list" style="margin-top:14px">` +
-    HORARIO_DOCENCIA.map(m => {
-      const diasTxt = Object.entries(m.dias).map(([d,h]) => `${d} ${h}`).join(" · ");
-      return `<button class="row pcard" data-materia="${m.clave}" style="border-color:color-mix(in srgb,var(--escuela) 45%,transparent);background:color-mix(in srgb,var(--escuela) 7%,var(--panel));flex-direction:column;padding:12px;gap:6px;text-align:left;width:100%">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;width:100%;">
-          <div>
-            <span style="font-family:var(--mono);font-size:10px;color:var(--escuela);font-weight:700">${m.clave} (${m.nivel})</span>
-            <div style="font-size:14px;font-weight:600;margin-top:2px;color:var(--tx)">${esc(m.nombre)}</div>
-          </div>
-          <span class="pill" style="background:color-mix(in srgb,var(--escuela) 20%,var(--panel));color:var(--escuela);font-size:9px">${m.aula}</span>
-        </div>
-        <div style="font-size:11.5px;color:var(--tx);font-weight:500;margin-top:4px">⏰ ${diasTxt}</div>
-        <div style="font-size:11px;color:var(--dim)">👨‍🏫 ${esc(m.prof)}</div>
-      </button>`;
-    }).join("") + `</div>`;
+  const lista = `<div class="list" style="margin-top:14px">` + ms.map(m => {
+    const dtxt = Object.entries(m.dias||{}).map(([d,r]) => `${d} ${r}`).join(" · ");
+    return `<button class="row pcard" data-materia="${m.id}" style="border-color:color-mix(in srgb,var(--escuela) 45%,transparent);background:color-mix(in srgb,var(--escuela) 7%,var(--panel));flex-direction:column;padding:12px;gap:6px;text-align:left;width:100%">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;width:100%">
+        <div><span style="font-family:var(--mono);font-size:10px;color:var(--escuela);font-weight:700">${esc(m.clave||"")}${m.nivel?" ("+esc(m.nivel)+")":""}</span>
+          <div style="font-size:14px;font-weight:600;margin-top:2px;color:var(--tx)">${esc(m.nombre)}</div></div>
+        ${m.aula?`<span class="pill" style="background:color-mix(in srgb,var(--escuela) 20%,var(--panel));color:var(--escuela);font-size:9px">${esc(m.aula)}</span>`:""}
+      </div>
+      ${dtxt?`<div style="font-size:11.5px;color:var(--tx);font-weight:500;margin-top:4px">⏰ ${dtxt}</div>`:""}
+      ${m.profesor?`<div style="font-size:11px;color:var(--dim)">👨‍🏫 ${esc(m.profesor)}</div>`:""}
+    </button>`;
+  }).join("") + `</div>`;
 
   return `<div class="sec">
-    <div class="sec-h">
-      <h2 class="sec-t">Periodo 2026 - 3</h2>
-      <span class="pill" style="color:var(--escuela);background:color-mix(in srgb,var(--escuela) 16%,transparent)">Posgrado</span>
-    </div>
-    ${gridHTML}
+    <div class="sec-h"><h2 class="sec-t">${esc(periodo)}</h2>
+      <button class="sec-a" data-nuevamat="1">+ Materia</button></div>
+    ${grid}
   </div>
   <div class="sec" style="margin-top:24px">
     <div class="sec-h"><h2 class="sec-t">Detalle de asignaturas</h2></div>
-    ${listaHTML}
+    ${lista}
   </div>`;
+}
+
+// "Santiago Pineda Aurelio Alejandro" -> "Santiago Pineda"
+const corto2 = n => (n||"").split(/\s+/).slice(0,2).join(" ");
+
+/* ---------- Al tocar una materia ---------- */
+function menuMateria(m){
+  if(!m) return;
+  const dtxt = Object.entries(m.dias||{}).map(([d,r]) => `${d} ${r}`).join(" · ");
+  hoja(`<h2 class="sheet-h">${esc(m.clave||"Materia")}</h2>
+    <p style="font-size:17px;font-weight:600;margin:0 0 6px;line-height:1.3">${esc(m.nombre)}</p>
+    <p class="sheet-s">${esc(dtxt)}${m.aula?" · "+esc(m.aula):""}${m.profesor?"<br>👨‍🏫 "+esc(m.profesor):""}</p>
+    <div class="mnu">
+      <button id="mm-tarea">Nueva tarea de esta materia<small>Área Escuela, con el nombre ya puesto</small></button>
+      <button id="mm-edit">Editar materia<small>Días, horario, aula, profesor</small></button>
+    </div>
+    <div class="acts"><button id="mm-no" class="btn">Cerrar</button></div>`);
+  $("mm-no").onclick = cerrar;
+  $("mm-tarea").onclick = () => formTarea({ area:"escuela", titulo:`${m.nombre}: `,
+    nota: m.profesor ? `👨‍🏫 ${m.profesor}` : null });
+  $("mm-edit").onclick = () => formMateria(m);
+}
+
+/* ---------- Formulario de materia ---------- */
+function formMateria(m){
+  m = m || {};
+  const nuevo = !m.id;
+  const D = ["Lun","Mar","Mié","Jue","Vie","Sáb"];
+  const prev = Object.entries(m.dias||{});
+  let dias = prev.map(([d]) => d);
+  let ini = prev.length ? prev[0][1].split("-")[0] : "";
+  let fin = prev.length ? prev[0][1].split("-")[1] : "";
+
+  const pintar = () => {
+    hoja(`<h2 class="sheet-h">${nuevo?"Nueva materia":"Materia"}</h2>
+      <label class="lab">Nombre</label>
+      <input id="m-nom" class="fld" value="${esc(m.nombre||"")}" placeholder="Seminario de Investigación II">
+      <div class="two"><div><label class="lab">Clave</label>
+        <input id="m-cla" class="fld" value="${esc(m.clave||"")}" placeholder="DCC07"></div>
+        <div><label class="lab">Nivel</label>
+        <input id="m-niv" class="fld" value="${esc(m.nivel||"")}" placeholder="3°"></div></div>
+      <label class="lab">Días</label>
+      <div class="dchips" id="m-dias">${D.map(d=>
+        `<button data-d="${d}" class="dchip ${dias.includes(d)?"on":""}">${d}</button>`).join("")}</div>
+      <div class="two"><div><label class="lab">Empieza</label>
+        <input id="m-ini" type="time" class="fld" value="${ini}"></div>
+        <div><label class="lab">Termina</label>
+        <input id="m-fin" type="time" class="fld" value="${fin}"></div></div>
+      <label class="lab">Aula</label>
+      <input id="m-aul" class="fld" value="${esc(m.aula||"")}" placeholder="POSGRADO-B">
+      <label class="lab">Profesor</label>
+      <input id="m-pro" class="fld" value="${esc(m.profesor||"")}" placeholder="Apellidos Nombre">
+      <label class="lab">Periodo</label>
+      <input id="m-per" class="fld" value="${esc(m.periodo||"")}" placeholder="Periodo 2026 - 3">
+      <div class="acts"><button id="m-no" class="btn" style="flex:.7;color:var(--dim)">Cancelar</button>
+        <button id="m-ok" class="btn btn-p" style="flex:1.3">Guardar</button></div>
+      ${nuevo?"":`<button id="m-del" class="btn btn-d" style="width:100%;margin-top:10px">Eliminar materia</button>`}`);
+
+    const leer = () => { ini = $("m-ini").value; fin = $("m-fin").value; };
+    document.querySelectorAll("#m-dias button").forEach(b => b.onclick = () => {
+      leer(); const d = b.dataset.d;
+      dias = dias.includes(d) ? dias.filter(x=>x!==d) : [...dias, d];
+      m = { ...m, nombre:$("m-nom").value, clave:$("m-cla").value, nivel:$("m-niv").value,
+            aula:$("m-aul").value, profesor:$("m-pro").value, periodo:$("m-per").value };
+      pintar();
+    });
+    $("m-no").onclick = cerrar;
+    if($("m-del")) $("m-del").onclick = () => {
+      if(confirm("¿Eliminar esta materia?")){ cerrar(); borrar("ag_materias", m.id); } };
+    $("m-ok").onclick = async () => {
+      const nombre = $("m-nom").value.trim();
+      if(!nombre) return $("m-nom").focus();
+      leer();
+      if(dias.length && !(ini && fin)) return alert("Falta la hora de inicio o de término.");
+      const rango = ini && fin ? `${ini}-${fin}` : null;
+      const mapa = {}; if(rango) dias.forEach(d => mapa[d] = rango);
+      const fila = { nombre, clave:$("m-cla").value.trim()||null, nivel:$("m-niv").value.trim()||null,
+        aula:$("m-aul").value.trim()||null, profesor:$("m-pro").value.trim()||null,
+        periodo:$("m-per").value.trim()||null, dias:mapa, activa:true };
+      $("m-ok").disabled = true;
+      await guardar("ag_materias", nuevo ? fila : { id:m.id, ...fila });
+      cerrar();
+    };
+  };
+  pintar();
 }
 
 /* ---------- REPASO ---------- */
@@ -1036,21 +1136,11 @@ function enlazar(){
     formTarea({ fecha:f, hora:h });
   });
 
-  // Evento para los botones de las asignaturas en la pestaña Horario
-  v.querySelectorAll("[data-materia]").forEach(b => b.onclick = () => {
-    const mat = HORARIO_DOCENCIA.find(m => m.clave === b.dataset.materia);
-    if(mat){
-      formTarea({
-        area: "escuela",
-        titulo: `${mat.nombre}: `,
-        nota: `👨‍🏫 ${mat.profCorto}`
-      });
-    }
-  });
-
   const inp = v.querySelector("#q");
   if(inp) inp.oninput = () => { S.q = inp.value; render(false); const n=$("q"); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } };
   v.querySelectorAll("[data-alhoy]").forEach(b => b.onclick = pasarAHoy);
+  v.querySelectorAll("[data-materia]").forEach(b => b.onclick = () => menuMateria(S.materias.find(x=>x.id===b.dataset.materia)));
+  v.querySelectorAll("[data-nuevamat]").forEach(b => b.onclick = () => formMateria());
   v.querySelectorAll("[data-hist]").forEach(b => b.onclick = () => { S.masHist = !S.masHist; render(false); });
   v.querySelectorAll("[data-dia]").forEach(b => b.onclick = () => { S.agFecha=b.dataset.dia; render(); });
   v.querySelectorAll("[data-verdia]").forEach(b => b.onclick = () => { S.agModo="dia"; render(false); });
@@ -1292,7 +1382,7 @@ function formRutinas(){
     <input id="r-nom" class="fld" style="margin-top:9px" placeholder="Nombre: turno matutino, día de tesis…">
     <div class="acts"><button id="r-ok" class="btn btn-p">Guardar rutina</button><button id="r-no" class="btn">Volver</button></div>`);
 
-  $("r-no").onclick = closeMenu;
+  $("r-no").onclick = cerrar;
   document.querySelectorAll("[data-usar]").forEach(b => b.onclick = () => aplicarRutina(S.rutinas.find(r=>r.id===b.dataset.usar)));
   document.querySelectorAll("[data-delrut]").forEach(b => b.onclick = async () => {
     if(!confirm("¿Eliminar esta rutina?")) return;
@@ -1562,6 +1652,7 @@ async function crearDesdeVoz(texto){
 $("fab").onclick = () => {
   if(S.tab==="proyectos" && !S.proy) return formProyecto();
   if(S.tab==="proyectos" && S.proy) return formTarea({ proyecto_id:S.proy, area:proyDe(S.proy)?.area });
+  if(S.tab==="horario") return formMateria();
   if(S.tab==="agenda") return formTarea({ fecha:S.agFecha });
   formTarea({ fecha:hoyISO() });
 };
