@@ -1,13 +1,13 @@
 {
-  "name": "Tablero",
-  "short_name": "Tablero",
+  "name": "AgendaApp",
+  "short_name": "AgendaApp",
   "description": "Agenda personal de escuela, trabajo y asuntos personales",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#131110",
-  "theme_color": "#131110",
+  "background_color": "#0D1726",
+  "theme_color": "#0D1726",
   "lang": "es-MX",
   "icons": [
     { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

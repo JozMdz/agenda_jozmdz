@@ -1,7 +1,7 @@
-/* Tablero — service worker mínimo.
+/* AgendaApp — service worker mínimo.
    Estrategia: red primero, caché como respaldo.
    Así siempre ves la versión más nueva, pero la app abre sin señal. */
-const CACHE = "tablero-v2";
+const CACHE = "agendaapp-v2";
 const SHELL = ["./", "./index.html", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
