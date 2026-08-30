@@ -1,8 +1,8 @@
 /* AgendaApp — service worker mínimo.
    Estrategia: red primero, caché como respaldo.
    Así siempre ves la versión más nueva, pero la app abre sin señal. */
-const CACHE = "agendaapp-v2";
-const SHELL = ["./", "./index.html", "./icon-192.png", "./icon-512.png"];
+const CACHE = "agendaapp-v3";
+const SHELL = ["./", "./index.html", "./icon-192-v2.png", "./icon-512-v2.png"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
