@@ -416,6 +416,7 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
   </nav>
   <div class="side-ft">
     <button id="s-tema">🌗 Cambiar tema</button>
+    <button id="s-push">🔔 Notificaciones</button>
     <button id="s-rut">🔁 Rutinas</button>
     <button id="s-csv">⬇️ Exportar CSV</button>
     <button id="s-out" style="color:var(--alert);margin-top:8px">🚪 Cerrar sesión</button>
@@ -430,6 +431,9 @@ select.fld{appearance:none;background-image:linear-gradient(45deg,transparent 50
 const SUPABASE_URL      = "https://bckhybcdtstqwpdmjcdd.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJja2h5YmNkdHN0cXdwZG1qY2RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2NzYyMDYsImV4cCI6MjEwMzI1MjIwNn0.leh4I3NR5V2tJlHSlDLMilaMTjwlpZkP-UssnvXV2f4";
 
+// Clave PÚBLICA de VAPID (la privada vive solo en la Edge Function, nunca aquí)
+const VAPID_PUBLIC = "BDsY_q1XbZ9I8tM3bC0lmsHO1P4QFovK7mgjuuHovuy1X5i2g5F6u9KSeYzpjuG9aofcYh35-tcKDHyCBorV1lI";
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ===================== Constantes ===================== */
@@ -443,7 +447,7 @@ const H0 = 6, H1 = 23, PX = 44;
 
 
 const S = {
-  user:null, proyectos:[], tareas:[], notas:[], rutinas:[], materias:[], q:"",
+  user:null, proyectos:[], tareas:[], notas:[], rutinas:[], materias:[], avisos:[], q:"",
   tab:"hoy", filtro:"todas", masHist:false, agModo:"mes", agFecha:null, proy:null, verHechas:false
 };
 
@@ -587,6 +591,7 @@ async function cargar(){
     S.proyectos = pr.data || []; S.tareas = ta.data || []; S.notas = no.data || [];
     try{ const r = await sb.from("ag_rutinas").select("*").order("nombre"); S.rutinas = r.data || []; }catch(_){ S.rutinas = []; }
     try{ const m = await sb.from("ag_materias").select("*").order("clave"); S.materias = m.data || []; }catch(_){ S.materias = []; }
+    try{ const v = await sb.from("ag_avisos").select("*").order("hora"); S.avisos = v.data || []; }catch(_){ S.avisos = []; }
     $("dot").classList.remove("off"); $("dot").title = "Conectado";
   }catch(e){
     $("dot").classList.add("off"); $("dot").title = "Sin conexión con la base";
@@ -1598,6 +1603,116 @@ function parseVoz(crudo, hoy){
   };
 }
 
+/* ---------- Notificaciones (Web Push) ---------- */
+const b64aBytes = s => {
+  const relleno = "=".repeat((4 - s.length % 4) % 4);
+  const bin = atob((s + relleno).replace(/-/g,"+").replace(/_/g,"/"));
+  return Uint8Array.from([...bin].map(c => c.charCodeAt(0)));
+};
+
+async function estadoPush(){
+  if(!("Notification" in window) || !("serviceWorker" in navigator)) return "no-soportado";
+  if(Notification.permission === "denied") return "bloqueado";
+  const reg = await navigator.serviceWorker.getRegistration();
+  const sub = reg && await reg.pushManager.getSubscription();
+  return sub ? "activo" : "inactivo";
+}
+
+async function activarPush(){
+  const est = await estadoPush();
+  if(est === "no-soportado")
+    return alert("Este navegador no soporta notificaciones push.\nEn iPad hay que instalar la app desde Safari primero.");
+  if(est === "bloqueado")
+    return alert("Chrome tiene bloqueadas las notificaciones para este sitio.\nActívalas en el candado de la barra de direcciones → Permisos.");
+
+  const reg = await navigator.serviceWorker.ready;
+
+  if(est === "activo"){
+    if(!confirm("Ya están activas en este dispositivo. ¿Quieres desactivarlas?")) return;
+    const sub = await reg.pushManager.getSubscription();
+    const url = sub.endpoint;
+    await sub.unsubscribe();
+    await sb.from("ag_push_subs").delete().eq("endpoint", url);
+    return toast("Notificaciones desactivadas en este dispositivo.");
+  }
+
+  const permiso = await Notification.requestPermission();
+  if(permiso !== "granted") return toast("No diste permiso. Puedes intentarlo otra vez cuando quieras.");
+
+  try{
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: b64aBytes(VAPID_PUBLIC)
+    });
+    const j = sub.toJSON();
+    const { error } = await sb.from("ag_push_subs").upsert({
+      endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth,
+      dispositivo: (navigator.userAgent.match(/Android|iPhone|iPad|Windows|Mac/) || ["equipo"])[0]
+    }, { onConflict: "endpoint" });
+    if(error) throw error;
+    toast("Listo. Recibirás el resumen a las 7:30 y a las 9:00.");
+  }catch(e){
+    alert("No se pudo activar: " + (e.message || e));
+  }
+}
+
+/* ---------- Panel de notificaciones ---------- */
+async function formNotificaciones(){
+  const est = await estadoPush();
+  const etiqueta = { activo:"Activadas en este equipo", inactivo:"Apagadas en este equipo",
+    bloqueado:"Bloqueadas por el navegador", "no-soportado":"No disponible aquí" }[est];
+
+  hoja(`<h2 class="sheet-h">Notificaciones</h2>
+    <p class="sheet-s">Te llega un resumen de lo que traes abierto, a las horas que tú pongas.</p>
+
+    <button id="np-sw" class="btn" style="width:100%;display:flex;align-items:center;gap:10px;justify-content:flex-start;${
+      est==="activo"?"border-color:var(--ok);color:var(--ok)":""}">
+      <span>${est==="activo"?"🔔":"🔕"}</span> ${etiqueta}</button>
+    <p class="sheet-s" style="margin-top:7px">Cada equipo se activa por separado: el celular y el iPad van aparte.</p>
+
+    <label class="lab">Horarios</label>
+    ${S.avisos.length ? `<div class="mnu">${S.avisos.map(a=>`
+      <div style="display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid var(--line)">
+        <span class="mono" style="font-size:19px;font-weight:700;width:62px;${a.activo?"":"opacity:.4"}">${a.hora.slice(0,5)}</span>
+        <div style="flex:1;min-width:0;font-size:12.5px;color:var(--dim);line-height:1.35">
+          ${a.solo_pendientes ? "Solo si queda algo abierto" : "Siempre, aunque esté limpio"}</div>
+        <button class="sec-a" data-avtog="${a.id}" style="color:${a.activo?"var(--ok)":"var(--dim2)"}">${a.activo?"On":"Off"}</button>
+        <button data-avdel="${a.id}" style="color:var(--dim2);font-size:17px;padding:0 3px">&times;</button>
+      </div>`).join("")}</div>`
+      : `<div class="empty"><span>Sin horarios. Agrega el primero abajo.</span></div>`}
+
+    <label class="lab">Agregar horario</label>
+    <div class="two"><div><input id="np-hora" type="time" class="fld" value="07:30"></div>
+      <div><select id="np-tipo" class="fld">
+        <option value="0">Siempre</option>
+        <option value="1">Solo si queda algo</option></select></div></div>
+    <div class="acts"><button id="np-no" class="btn" style="flex:.7;color:var(--dim)">Cerrar</button>
+      <button id="np-add" class="btn btn-p" style="flex:1.3">Agregar</button></div>`);
+
+  $("np-no").onclick = cerrar;
+  $("np-sw").onclick = async () => { await activarPush(); formNotificaciones(); };
+
+  document.querySelectorAll("[data-avtog]").forEach(b => b.onclick = async () => {
+    const a = S.avisos.find(x => x.id === b.dataset.avtog);
+    await sb.from("ag_avisos").update({ activo: !a.activo }).eq("id", a.id);
+    await cargar(); formNotificaciones();
+  });
+  document.querySelectorAll("[data-avdel]").forEach(b => b.onclick = async () => {
+    await sb.from("ag_avisos").delete().eq("id", b.dataset.avdel);
+    await cargar(); formNotificaciones();
+  });
+  $("np-add").onclick = async () => {
+    const hora = $("np-hora").value;
+    if(!hora) return;
+    $("np-add").disabled = true;
+    // ultimo_envio = hoy para que no dispare de inmediato si la hora ya pasó
+    const { error } = await sb.from("ag_avisos").insert([{
+      hora, solo_pendientes: $("np-tipo").value === "1", activo: true, ultimo_envio: hoyISO() }]);
+    if(error) return alert("No se guardó: " + error.message);
+    await cargar(); formNotificaciones();
+  };
+}
+
 /* ---------- Dictado ---------- */
 let toastT;
 function toast(msg, ids){
@@ -1670,6 +1785,7 @@ $("fab").onclick = () => {
   formTarea({ fecha:hoyISO() });
 };
 $("mic").onclick = dictar;
+$("s-push").onclick = () => { formNotificaciones(); closeMenu(); };
 $("lg-go").onclick = entrar;
 $("lg-pass").onkeydown = e => { if(e.key==="Enter") entrar(); };
 sb.auth.onAuthStateChange((ev, sesion) => {

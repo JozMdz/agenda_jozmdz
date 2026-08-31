@@ -1,7 +1,7 @@
 /* AgendaApp — service worker mínimo.
    Estrategia: red primero, caché como respaldo.
    Así siempre ves la versión más nueva, pero la app abre sin señal. */
-const CACHE = "agendaapp-v3";
+const CACHE = "agendaapp-v4";
 const SHELL = ["./", "./index.html", "./icon-192-v2.png", "./icon-512-v2.png"];
 
 self.addEventListener("install", e => {
@@ -27,5 +27,30 @@ self.addEventListener("fetch", e => {
         return r;
       })
       .catch(() => caches.match(e.request).then(r => r || caches.match("./index.html")))
+  );
+});
+
+/* ---------- Notificaciones ---------- */
+self.addEventListener("push", e => {
+  let d = {};
+  try { d = e.data.json(); }
+  catch(_) { d = { title: "AgendaApp", body: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.registration.showNotification(d.title || "AgendaApp", {
+    body:  d.body || "",
+    icon:  "./icon-192-v2.png",
+    badge: "./icon-192-v2.png",
+    tag:   d.tag || "resumen",
+    renotify: true,
+    data: { url: d.url || "./" }
+  }));
+});
+
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(lista => {
+      for (const c of lista) if (c.url.startsWith(self.location.origin) && "focus" in c) return c.focus();
+      return self.clients.openWindow(e.notification.data && e.notification.data.url || "./");
+    })
   );
 });
