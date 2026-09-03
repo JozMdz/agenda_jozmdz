@@ -693,6 +693,41 @@ function vHoy(){
            <ul class="list">${fila(tUrgent,true)}</ul></div>`;
   }
 
+  /* ---- Todas las tareas de hoy ---- */
+  const todaHoy = ordena(hoy);
+  if(todaHoy.length){
+    h += `<div class="sec"><div class="sec-h"><h2 class="sec-t">Hoy · ${todaHoy.length}</h2></div>
+      <ul class="list">${todaHoy.map(t=>fila(t)).join("")}</ul></div>`;
+  }
+
+  /* ---- Clase en curso o próxima del día ---- */
+  const ahora = new Date();
+  const hhmm  = ahora.getHours()*60 + ahora.getMinutes();
+  const diaKey = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"][ahora.getDay()];
+  const claseAhora = (S.materias||[]).filter(m => m.activa!==false).map(m => {
+    const rango = (m.dias||{})[diaKey]; if(!rango) return null;
+    const [ini, fin] = rango.split("-").map(t => { const [h,mn]=t.split(":").map(Number); return h*60+mn; });
+    return { ...m, ini, fin };
+  }).filter(Boolean).sort((a,b)=>a.ini-b.ini);
+
+  const enCurso = claseAhora.find(c => hhmm >= c.ini && hhmm < c.fin);
+  const proxima = claseAhora.find(c => c.ini > hhmm && c.ini - hhmm <= 60);
+  const clase   = enCurso || proxima;
+
+  if(clase){
+    const label   = enCurso ? "En curso" : `En ${clase.ini - hhmm} min`;
+    const horario = clase.hora_inicio ? clase.hora_inicio.slice(0,5) : Object.values(clase.dias||{})[0]?.split("-")[0]||"";
+    h += `<div class="sec"><div class="sec-h"><h2 class="sec-t" style="color:var(--escuela)">${label}</h2></div>
+      <div class="pcard" style="border-color:color-mix(in srgb,var(--escuela) 45%,transparent);
+        background:color-mix(in srgb,var(--escuela) 8%,var(--panel))">
+        <div class="pcard-h"><span class="pcard-t">${esc(clase.nombre)}</span>
+          <span class="pill" style="background:color-mix(in srgb,var(--escuela) 20%,var(--panel));color:var(--escuela)">${label}</span></div>
+        ${clase.aula?`<span class="pcard-d">📍 ${esc(clase.aula)}</span>`:""}
+        ${clase.profesor?`<span class="pcard-d">👨‍🏫 ${esc(clase.profesor)}</span>`:""}
+        <span class="pcard-s"><span>${Object.values(clase.dias||{})[0]||""}</span></span>
+      </div></div>`;
+  }
+
   return h;
 }
 
