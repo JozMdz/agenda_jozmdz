@@ -1307,7 +1307,11 @@ function formTarea(t){
 
       <div class="acts"><button id="f-no" class="btn" style="flex:.7;color:var(--dim)">Cancelar</button><button id="f-ok" class="btn btn-p" style="flex:1.3">Guardar</button></div>
       ${nuevo?"":`<div class="mact" style="padding:12px 0 0"><button id="f-dup">Duplicar</button>
-        <button id="f-del" style="color:var(--alert)">Eliminar</button></div>`}`);
+        ${t.serie_id
+          ? `<button id="f-del-uno" style="color:var(--alert)">Solo esta</button></div>
+             <div class="mact" style="padding:8px 0 0"><button id="f-del-desde" style="color:var(--alert)">Esta y las siguientes</button>
+             <button id="f-del-serie" style="color:var(--alert)">Toda la serie</button></div>`
+          : `<button id="f-del" style="color:var(--alert)">Eliminar</button></div>`}`}`);
 
     document.querySelectorAll("#f-area button").forEach(b => b.onclick = () => { leer(); f.area = b.dataset.a; pintar(); });
     document.querySelectorAll("[data-pos]").forEach(b => b.onclick = () => { leer(); f.fecha = addD(hoyISO(), +b.dataset.pos); pintar(); });
@@ -1331,6 +1335,21 @@ function formTarea(t){
       leer(); await guardar("ag_tareas", { ...arma(), titulo:f.titulo.trim()+" (copia)" }); cerrar(); };
     if($("f-del")) $("f-del").onclick = () => {
       if(confirm("¿Eliminar la tarea?")){ cerrar(); borrar("ag_tareas", t.id); } };
+    if($("f-del-uno")) $("f-del-uno").onclick = () => {
+      if(confirm("¿Eliminar solo esta tarea?")){ cerrar(); borrar("ag_tareas", t.id); } };
+    if($("f-del-desde")) $("f-del-desde").onclick = async () => {
+      if(!t.fecha) return alert("Esta tarea no tiene fecha para aplicar 'esta y las siguientes'.");
+      if(!confirm("¿Eliminar esta tarea y todas las siguientes de la serie?")) return;
+      const { error } = await sb.from("ag_tareas").delete().eq("serie_id", t.serie_id).gte("fecha", t.fecha);
+      if(error){ alert("No se eliminó: " + error.message); return; }
+      cerrar(); await cargar(); render(false);
+    };
+    if($("f-del-serie")) $("f-del-serie").onclick = async () => {
+      if(!confirm("¿Eliminar toda la serie?")) return;
+      const { error } = await sb.from("ag_tareas").delete().eq("serie_id", t.serie_id);
+      if(error){ alert("No se eliminó: " + error.message); return; }
+      cerrar(); await cargar(); render(false);
+    };
 
     $("f-ok").onclick = async () => {
       leer();
@@ -1338,12 +1357,13 @@ function formTarea(t){
       const base = arma();
       $("f-ok").disabled = true; $("f-ok").textContent = "Guardando…";
       if(nuevo && dias.length && f.fecha){
+        const serieId = crypto.randomUUID();
         const filas = [], l0 = lunes(f.fecha);
         for(let s=0;s<semanas;s++) dias.forEach(d => {
           const k = addD(addD(l0, s*7), d);
-          if(k >= f.fecha) filas.push({ ...base, fecha:k });
+          if(k >= f.fecha) filas.push({ ...base, fecha:k, serie_id:serieId });
         });
-        await guardar("ag_tareas", filas.length ? filas : [base]);
+        await guardar("ag_tareas", filas.length ? filas : [{ ...base, serie_id:serieId }]);
       } else {
         await guardar("ag_tareas", nuevo ? base : { id:t.id, ...base });
       }
